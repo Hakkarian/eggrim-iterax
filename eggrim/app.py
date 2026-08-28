@@ -6,66 +6,19 @@ FPS = 60
 MOVE_SPEED = 40.0
 
 from eggrim.assets import load_banks
+from eggrim.fog import FOG_HALF, FOG_SIZE
+from eggrim.player import Facing, Player
+from eggrim.states import announce_progress
+from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
 
 load_banks()
 
-
-FOG_SIZE = 120
-FOG_HALF = 60
-FOG_RGB = (225, 235, 250)
-
-
-def palette_rgb(value):
-    return ((value >> 16) & 255, (value >> 8) & 255, value & 255)
-
-
-def blend_floor_to_fog(dist):
-    floor = palette_rgb(pyxel.colors[3])
-    alpha = dist / FOG_HALF
-    return tuple(floor[i] + (FOG_RGB[i] - floor[i]) * alpha for i in range(3))
-
-
-def nearest_fog_palette(rgb):
-    best = 1
-    best_dist = None
-    for col in range(1, 16):
-        pal = palette_rgb(pyxel.colors[col])
-        dist = sum((pal[i] - rgb[i]) ** 2 for i in range(3))
-        if best_dist is None or dist < best_dist:
-            best, best_dist = col, dist
-    return best
-
-
-def render_fog():
-    pyxel.colors[15] = (FOG_RGB[0] << 16) | (FOG_RGB[1] << 8) | FOG_RGB[2]
-    rows = []
-    for y in range(FOG_SIZE):
-        chars = []
-        for x in range(FOG_SIZE):
-            offset_x = x - FOG_HALF + 0.5
-            offset_y = y - FOG_HALF + 0.5
-            dist = (offset_x * offset_x + offset_y * offset_y) ** 0.5
-            if dist >= FOG_HALF:
-                chars.append("0")
-            else:
-                chars.append("0123456789abcdef"[nearest_fog_palette(blend_floor_to_fog(dist))])
-        rows.append("".join(chars))
-    pyxel.images[1].set(0, 0, rows)
-
-
-render_fog()
-
-PLAYER_START_X = 128
-PLAYER_START_Y = 72
-WORLD_RADIUS_X = 120.0
-WORLD_RADIUS_Y = 68.0
-
-player = {
-    "x": float(PLAYER_START_X),
-    "y": float(PLAYER_START_Y),
-    "facing": (1.0, 0.0),
-    "side": 1.0,
-}
+player = Player(
+    x=float(PLAYER_START_X),
+    y=float(PLAYER_START_Y),
+    facing=(1.0, 0.0),
+    side=1.0,
+)
 
 
 def update():
@@ -79,32 +32,30 @@ def update():
     )
     if dx or dy:
         length = (dx * dx + dy * dy) ** 0.5
-        player["facing"] = (dx / length, dy / length)
-        if player["facing"][0]:
-            player["side"] = 1.0 if player["facing"][0] > 0 else -1.0
-        player["x"] += player["facing"][0] * MOVE_SPEED / FPS
-        player["y"] += player["facing"][1] * MOVE_SPEED / FPS
+        player.facing = (dx / length, dy / length)
+        if player.facing[0]:
+            player.side = 1.0 if player.facing[0] > 0 else -1.0
+        player.x += player.facing[0] * MOVE_SPEED / FPS
+        player.y += player.facing[1] * MOVE_SPEED / FPS
 
-    offset_x = player["x"] - PLAYER_START_X
-    offset_y = player["y"] - PLAYER_START_Y
-    if (offset_x / WORLD_RADIUS_X) ** 2 + (offset_y / WORLD_RADIUS_Y) ** 2 > 1.0:
-        player["x"] = float(PLAYER_START_X)
-        player["y"] = float(PLAYER_START_Y)
+    if outside_world(player.x, player.y):
+        player.x = float(PLAYER_START_X)
+        player.y = float(PLAYER_START_Y)
 
 
 def draw():
     pyxel.cls(3)
-    facing_x, facing_y = player["facing"]
-    if abs(facing_x) >= abs(facing_y):
-        px_src, portrait_w = 32, -32 if player["side"] < 0 else 32
-    elif facing_y < 0:
+    view = player.view
+    if view in (Facing.LEFT, Facing.RIGHT):
+        px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
+    elif view is Facing.UP:
         px_src, portrait_w = 96, 32
     else:
         px_src, portrait_w = 64, 32
     pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
     pyxel.blt(
-        int(player["x"]) - FOG_HALF,
-        int(player["y"]) - FOG_HALF,
+        int(player.x) - FOG_HALF,
+        int(player.y) - FOG_HALF,
         1,
         0,
         0,
@@ -112,13 +63,12 @@ def draw():
         FOG_SIZE,
         0,
     )
-    sprite_x = int(player["x"]) - 8
-    sprite_y = int(player["y"]) - 8
-    facing_x, facing_y = player["facing"]
-    if abs(facing_x) >= abs(facing_y):
-        sprite_w = -16 if facing_x < 0 else 16
+    sprite_x = int(player.x) - 8
+    sprite_y = int(player.y) - 8
+    if view in (Facing.LEFT, Facing.RIGHT):
+        sprite_w = -16 if view is Facing.LEFT else 16
         pyxel.blt(sprite_x, sprite_y, 0, 0, 0, sprite_w, 16, 0)
-    elif facing_y < 0:
+    elif view is Facing.UP:
         pyxel.blt(sprite_x, sprite_y, 0, 0, 16, 16, 16, 0)
     else:
         pyxel.blt(sprite_x, sprite_y, 0, 16, 0, 16, 16, 0)
@@ -126,6 +76,5 @@ def draw():
 
 def run():
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
-    print("Phase 1 complete")
-    print("Phase 2 complete")
+    announce_progress()
     pyxel.run(update, draw)
