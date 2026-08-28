@@ -17,7 +17,15 @@ from eggrim.hud import (
     STAMINA_COLOR,
     draw_bar,
 )
-from eggrim.player import Facing, Player, STAT_MAX
+from eggrim.player import (
+    Facing,
+    Player,
+    SPRINT_DRAIN,
+    SPRINT_MIN_START,
+    SPRINT_MULTIPLIER,
+    STAMINA_REGEN,
+    STAT_MAX,
+)
 from eggrim.states import announce_progress
 from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
 
@@ -40,13 +48,30 @@ def update():
         (pyxel.btn(pyxel.KEY_S) or pyxel.btn(pyxel.KEY_DOWN))
         - (pyxel.btn(pyxel.KEY_W) or pyxel.btn(pyxel.KEY_UP))
     )
+    sprint_held = (
+        pyxel.btn(pyxel.KEY_SHIFT) or pyxel.btn(pyxel.KEY_LSHIFT) or pyxel.btn(pyxel.KEY_RSHIFT)
+    )
+    drained = False
+    speed = MOVE_SPEED
     if dx or dy:
         length = (dx * dx + dy * dy) ** 0.5
         player.facing = (dx / length, dy / length)
         if player.facing[0]:
             player.side = 1.0 if player.facing[0] > 0 else -1.0
-        player.x += player.facing[0] * MOVE_SPEED / FPS
-        player.y += player.facing[1] * MOVE_SPEED / FPS
+        if sprint_held and (
+            player.stamina >= SPRINT_MIN_START or (player.sprinting and player.stamina > 0)
+        ):
+            player.sprinting = True
+            drained = True
+            speed = MOVE_SPEED * SPRINT_MULTIPLIER
+            player.stamina = max(0.0, player.stamina - SPRINT_DRAIN / FPS)
+        else:
+            player.sprinting = False
+        player.x += player.facing[0] * speed / FPS
+        player.y += player.facing[1] * speed / FPS
+    if not drained:
+        player.sprinting = False
+        player.stamina = min(STAT_MAX, player.stamina + STAMINA_REGEN / FPS)
 
     if outside_world(player.x, player.y):
         player.x = float(PLAYER_START_X)
