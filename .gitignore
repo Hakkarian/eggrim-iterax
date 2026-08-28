@@ -1,0 +1,7 @@
+# Claude Code / OMC session artifacts
+.claude/
+.omc/
+
+# Python
+__pycache__/
+*.pyc
