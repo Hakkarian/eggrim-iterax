@@ -8,6 +8,7 @@ MOVE_SPEED = 40.0
 from eggrim.assets import load_banks
 from eggrim.fog import FOG_HALF, FOG_SIZE
 from eggrim.player import Facing, Player
+from eggrim.states import announce_progress
 from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
 
 load_banks()
@@ -75,6 +76,5 @@ def draw():
 
 def run():
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
-    print("Phase 1 complete")
-    print("Phase 2 complete")
+    announce_progress()
     pyxel.run(update, draw)
