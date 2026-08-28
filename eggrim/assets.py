@@ -189,3 +189,31 @@ def load_banks():
     pyxel.images[0].set(32, 0, PORTRAIT_CHARS)
     pyxel.images[0].set(64, 0, PORTRAIT_FRONT_CHARS)
     pyxel.images[0].set(96, 0, PORTRAIT_BACK_CHARS)
+    pyxel.images[0].set(96, 16, PILLAR_CHARS)
+
+
+PILLAR_LETTERS = {".": "0", "W": "7", "G": "d"}
+
+PILLAR_ROWS = (
+    "....WWWWWW......",
+    "....WGGGGW......",
+    "....WGGGGW......",
+    "....WGGGGW......",
+    "....WWWWWW......",
+    ".....GGGG.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    ".....GGGW.......",
+    "....WGGGGW......",
+    "....WWWWWW......",
+)
+
+PILLAR_CHARS = tuple(
+    "".join(PILLAR_LETTERS[ch] for ch in row)
+    for row in PILLAR_ROWS
+)

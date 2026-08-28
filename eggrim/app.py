@@ -6,7 +6,8 @@ FPS = 60
 MOVE_SPEED = 40.0
 
 from eggrim.assets import load_banks
-from eggrim.fog import FOG_HALF, FOG_SIZE
+from eggrim.creatures import spawn_pillars
+from eggrim.fog import FOG_HALF, FOG_SIZE, pillar_tint_level, render_pillar_tints
 from eggrim.hud import (
     HEALTH_BAR_Y,
     HEALTH_COLOR,
@@ -32,6 +33,7 @@ from eggrim.states import announce_progress
 from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
 
 load_banks()
+render_pillar_tints()
 
 player = Player(
     x=float(PLAYER_START_X),
@@ -39,6 +41,8 @@ player = Player(
     facing=(1.0, 0.0),
     side=1.0,
 )
+
+pillars = spawn_pillars()
 
 
 def update():
@@ -103,6 +107,13 @@ def draw():
         FOG_SIZE,
         0,
     )
+    for pillar in pillars:
+        dist = ((pillar.x - player.x) ** 2 + (pillar.y - player.y) ** 2) ** 0.5
+        level = pillar_tint_level(dist)
+        if level < 0:
+            pyxel.blt(int(pillar.x) - 8, int(pillar.y) - 8, 0, 96, 16, 16, 16, 0)
+        else:
+            pyxel.blt(int(pillar.x) - 8, int(pillar.y) - 8, 2, 16 * level, 16, 16, 16, 0)
     sprite_x = int(player.x) - 8
     sprite_y = int(player.y) - 8
     if view in (Facing.LEFT, Facing.RIGHT):
