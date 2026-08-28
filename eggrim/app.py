@@ -10,17 +10,14 @@ from eggrim.fog import FOG_HALF, FOG_SIZE
 from eggrim.hud import (
     HEALTH_BAR_Y,
     HEALTH_COLOR,
-    HEALTH_VALUE,
     HUD_BAR_H,
     HUD_BAR_W,
     HUD_BAR_X,
     STAMINA_BAR_Y,
     STAMINA_COLOR,
-    STAMINA_VALUE,
-    VALUE_MAX,
     draw_bar,
 )
-from eggrim.player import Facing, Player
+from eggrim.player import Facing, Player, STAT_MAX
 from eggrim.states import announce_progress
 from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
 
@@ -84,8 +81,8 @@ def draw():
         HUD_BAR_W,
         HUD_BAR_H,
         HEALTH_COLOR,
-        HEALTH_VALUE,
-        VALUE_MAX,
+        player.health,
+        STAT_MAX,
     )
     draw_bar(
         HUD_BAR_X,
@@ -93,8 +90,8 @@ def draw():
         HUD_BAR_W,
         HUD_BAR_H,
         STAMINA_COLOR,
-        STAMINA_VALUE,
-        VALUE_MAX,
+        player.stamina,
+        STAT_MAX,
     )
     if view in (Facing.LEFT, Facing.RIGHT):
         px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32

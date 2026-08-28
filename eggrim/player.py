@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+STAT_MAX = 100.0
+
 
 class Facing(Enum):
     RIGHT = auto()
@@ -15,6 +17,8 @@ class Player:
     y: float
     facing: tuple
     side: float
+    health: float = STAT_MAX
+    stamina: float = STAT_MAX
 
     @property
     def view(self):

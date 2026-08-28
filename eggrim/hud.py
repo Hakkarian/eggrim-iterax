@@ -10,10 +10,6 @@ STAMINA_COLOR = 11
 HUD_BACK_COLOR = 1
 HUD_BORDER_COLOR = 0
 
-HEALTH_VALUE = 100
-STAMINA_VALUE = 100
-VALUE_MAX = 100
-
 
 def draw_bar(x, y, width, height, fill_color, value, value_max):
     pyxel.rectb(x - 1, y - 1, width + 2, height + 2, HUD_BORDER_COLOR)
