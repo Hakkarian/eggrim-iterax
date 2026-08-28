@@ -74,6 +74,8 @@ pyxel.images[0].set(32, 0, PORTRAIT_CHARS)
 
 PLAYER_START_X = 128
 PLAYER_START_Y = 72
+WORLD_RADIUS_X = 120.0
+WORLD_RADIUS_Y = 68.0
 
 player = {"x": float(PLAYER_START_X), "y": float(PLAYER_START_Y), "facing": (1.0, 0.0)}
 
@@ -93,6 +95,12 @@ def update():
         player["x"] += player["facing"][0] * MOVE_SPEED / FPS
         player["y"] += player["facing"][1] * MOVE_SPEED / FPS
 
+    offset_x = player["x"] - PLAYER_START_X
+    offset_y = player["y"] - PLAYER_START_Y
+    if (offset_x / WORLD_RADIUS_X) ** 2 + (offset_y / WORLD_RADIUS_Y) ** 2 > 1.0:
+        player["x"] = float(PLAYER_START_X)
+        player["y"] = float(PLAYER_START_Y)
+
 
 def draw():
     pyxel.cls(3)
@@ -106,4 +114,5 @@ def draw():
 
 
 pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
+print("Phase 1 complete")
 pyxel.run(update, draw)
