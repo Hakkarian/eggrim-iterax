@@ -18,6 +18,8 @@ from eggrim.hud import (
     draw_bar,
 )
 from eggrim.player import (
+    BLOCK_DRAIN,
+    BLOCK_MIN_START,
     Facing,
     Player,
     SPRINT_DRAIN,
@@ -51,14 +53,24 @@ def update():
     sprint_held = (
         pyxel.btn(pyxel.KEY_SHIFT) or pyxel.btn(pyxel.KEY_LSHIFT) or pyxel.btn(pyxel.KEY_RSHIFT)
     )
+    block_held = pyxel.btn(pyxel.MOUSE_BUTTON_RIGHT)
     drained = False
+    if block_held and (
+        player.stamina >= BLOCK_MIN_START or (player.blocking and player.stamina > 0)
+    ):
+        player.blocking = True
+        player.sprinting = False
+        drained = True
+        player.stamina = max(0.0, player.stamina - BLOCK_DRAIN / FPS)
+    else:
+        player.blocking = False
     speed = MOVE_SPEED
     if dx or dy:
         length = (dx * dx + dy * dy) ** 0.5
         player.facing = (dx / length, dy / length)
         if player.facing[0]:
             player.side = 1.0 if player.facing[0] > 0 else -1.0
-        if sprint_held and (
+        if not player.blocking and sprint_held and (
             player.stamina >= SPRINT_MIN_START or (player.sprinting and player.stamina > 0)
         ):
             player.sprinting = True
