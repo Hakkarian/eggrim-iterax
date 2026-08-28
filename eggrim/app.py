@@ -7,6 +7,19 @@ MOVE_SPEED = 40.0
 
 from eggrim.assets import load_banks
 from eggrim.fog import FOG_HALF, FOG_SIZE
+from eggrim.hud import (
+    HEALTH_BAR_Y,
+    HEALTH_COLOR,
+    HEALTH_VALUE,
+    HUD_BAR_H,
+    HUD_BAR_W,
+    HUD_BAR_X,
+    STAMINA_BAR_Y,
+    STAMINA_COLOR,
+    STAMINA_VALUE,
+    VALUE_MAX,
+    draw_bar,
+)
 from eggrim.player import Facing, Player
 from eggrim.states import announce_progress
 from eggrim.world import PLAYER_START_X, PLAYER_START_Y, outside_world
@@ -46,13 +59,6 @@ def update():
 def draw():
     pyxel.cls(3)
     view = player.view
-    if view in (Facing.LEFT, Facing.RIGHT):
-        px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
-    elif view is Facing.UP:
-        px_src, portrait_w = 96, 32
-    else:
-        px_src, portrait_w = 64, 32
-    pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
     pyxel.blt(
         int(player.x) - FOG_HALF,
         int(player.y) - FOG_HALF,
@@ -72,6 +78,31 @@ def draw():
         pyxel.blt(sprite_x, sprite_y, 0, 0, 16, 16, 16, 0)
     else:
         pyxel.blt(sprite_x, sprite_y, 0, 16, 0, 16, 16, 0)
+    draw_bar(
+        HUD_BAR_X,
+        HEALTH_BAR_Y,
+        HUD_BAR_W,
+        HUD_BAR_H,
+        HEALTH_COLOR,
+        HEALTH_VALUE,
+        VALUE_MAX,
+    )
+    draw_bar(
+        HUD_BAR_X,
+        STAMINA_BAR_Y,
+        HUD_BAR_W,
+        HUD_BAR_H,
+        STAMINA_COLOR,
+        STAMINA_VALUE,
+        VALUE_MAX,
+    )
+    if view in (Facing.LEFT, Facing.RIGHT):
+        px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
+    elif view is Facing.UP:
+        px_src, portrait_w = 96, 32
+    else:
+        px_src, portrait_w = 64, 32
+    pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
 
 
 def run():
