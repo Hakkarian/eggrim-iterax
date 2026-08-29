@@ -6,6 +6,7 @@ FPS = 60
 MOVE_SPEED = 40.0
 
 from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
+from eggrim.assets.floors import render_tiles
 from eggrim.combat import (
     THRUST_ANIM_FRAMES,
     THRUST_FIST_RADIUS,
@@ -55,7 +56,6 @@ from eggrim.zones import (
     TILE_TYPE_INDEX,
     ZONE_LINKS,
     load_zone,
-    render_tiles,
 )
 from eggrim.world import (
     PLAYER_FEET_OFFSET_Y,
