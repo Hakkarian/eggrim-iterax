@@ -42,6 +42,7 @@ from eggrim.player import (
     STAT_MAX,
 )
 from eggrim.states import announce_progress
+from eggrim.zones import TILE, load_zone, render_tiles
 from eggrim.world import (
     PLAYER_START_X,
     PLAYER_START_Y,
@@ -61,6 +62,14 @@ player = Player(
 
 pillars = spawn_pillars()
 thrust = ThrustState()
+
+zone = None
+
+
+def camera_following_player():
+    cam_x = max(0.0, min(player.x - SCREEN_W / 2, zone.width_px - SCREEN_W))
+    cam_y = max(0.0, min(player.y - SCREEN_H / 2, zone.height_px - SCREEN_H))
+    return cam_x, cam_y
 
 portrait_to = "side"
 portrait_from = None
@@ -220,6 +229,18 @@ def draw_pillar(pillar):
 
 def draw():
     pyxel.cls(3)
+    cam_x, cam_y = camera_following_player()
+    pyxel.camera(cam_x, cam_y)
+    pyxel.bltm(
+        0,
+        0,
+        zone.tilemap,
+        int(cam_x),
+        int(cam_y),
+        SCREEN_W,
+        SCREEN_H,
+        0,
+    )
     view = player.view
     pyxel.blt(
         int(player.x) - FOG_HALF,
@@ -270,6 +291,7 @@ def draw():
     for pillar in pillars:
         if pillar.y > player.y:
             draw_pillar(pillar)
+    pyxel.camera(0, 0)
     draw_bar(
         HUD_BAR_X,
         HEALTH_BAR_Y,
@@ -303,7 +325,10 @@ def draw():
 
 
 def run():
+    global zone
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
+    render_tiles()
+    zone = load_zone("arena")
     announce_progress()
     pyxel.run(update, draw)
