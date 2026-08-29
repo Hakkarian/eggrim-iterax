@@ -19,7 +19,13 @@ from eggrim.combat import (
     thrust_target,
 )
 from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars
-from eggrim.fog import FOG_HALF, FOG_SIZE, pillar_tint_level, render_pillar_tints
+from eggrim.fog import (
+    FOG_COLOR,
+    TILE_TINT_V,
+    pillar_tint_level,
+    render_pillar_tints,
+    render_tile_tints,
+)
 from eggrim.hud import (
     HEALTH_BAR_Y,
     HEALTH_COLOR,
@@ -29,6 +35,7 @@ from eggrim.hud import (
     STAMINA_BAR_Y,
     STAMINA_COLOR,
     draw_bar,
+    draw_minimap,
 )
 from eggrim.player import (
     BLOCK_DRAIN,
@@ -41,8 +48,7 @@ from eggrim.player import (
     STAMINA_REGEN,
     STAT_MAX,
 )
-from eggrim.states import announce_progress
-from eggrim.zones import TILE, load_zone, render_tiles
+from eggrim.zones import TILE_TYPE_INDEX, TILE, load_zone, render_tiles
 from eggrim.world import (
     PLAYER_ZONE_MARGIN,
     PLAYER_START_X,
@@ -68,8 +74,8 @@ zone = None
 
 
 def camera_following_player():
-    cam_x = max(0.0, min(player.x - SCREEN_W / 2, zone.width_px - SCREEN_W))
-    cam_y = max(0.0, min(player.y - SCREEN_H / 2, zone.height_px - SCREEN_H))
+    cam_x = max(0, min(int(player.x) - SCREEN_W // 2, zone.width_px - SCREEN_W))
+    cam_y = max(0, min(int(player.y) - SCREEN_H // 2, zone.height_px - SCREEN_H))
     return cam_x, cam_y
 
 portrait_to = "side"
@@ -229,31 +235,41 @@ def draw_pillar(pillar):
         pyxel.blt(int(pillar.x) - 8, int(pillar.y) - 8, 2, 16 * level, 32, 16, 16, 0)
 
 
+def draw_world_tiles(cam_x, cam_y):
+    px = int(player.x)
+    py = int(player.y)
+    tile_x0 = cam_x // TILE
+    tile_y0 = cam_y // TILE
+    tile_x1 = min((cam_x + SCREEN_W) // TILE, zone.width_tiles - 1)
+    tile_y1 = min((cam_y + SCREEN_H) // TILE, zone.height_tiles - 1)
+    for tile_y in range(tile_y0, tile_y1 + 1):
+        row = zone.grid[tile_y]
+        for tile_x in range(tile_x0, tile_x1 + 1):
+            offset_x = tile_x * TILE + TILE // 2 - px
+            offset_y = tile_y * TILE + TILE // 2 - py
+            dist = (offset_x * offset_x + offset_y * offset_y) ** 0.5
+            level = pillar_tint_level(dist)
+            if level is None:
+                continue
+            kind = TILE_TYPE_INDEX[row[tile_x]]
+            pyxel.blt(
+                tile_x * TILE,
+                tile_y * TILE,
+                2,
+                level * TILE,
+                TILE_TINT_V + kind * TILE,
+                TILE,
+                TILE,
+                0,
+            )
+
+
 def draw():
-    pyxel.cls(3)
+    pyxel.cls(FOG_COLOR)
     cam_x, cam_y = camera_following_player()
     pyxel.camera(cam_x, cam_y)
-    pyxel.bltm(
-        0,
-        0,
-        zone.tilemap,
-        int(cam_x),
-        int(cam_y),
-        SCREEN_W,
-        SCREEN_H,
-        0,
-    )
+    draw_world_tiles(cam_x, cam_y)
     view = player.view
-    pyxel.blt(
-        int(player.x) - FOG_HALF,
-        int(player.y) - FOG_HALF,
-        1,
-        0,
-        0,
-        FOG_SIZE,
-        FOG_SIZE,
-        0,
-    )
     for pillar in pillars:
         if pillar.y <= player.y:
             draw_pillar(pillar)
@@ -294,6 +310,7 @@ def draw():
         if pillar.y > player.y:
             draw_pillar(pillar)
     pyxel.camera(0, 0)
+    draw_minimap(zone, player, pillars, cam_x, cam_y)
     draw_bar(
         HUD_BAR_X,
         HEALTH_BAR_Y,
@@ -332,7 +349,7 @@ def run():
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
     render_tiles()
+    render_tile_tints()
     zone = load_zone("arena")
     pillars = spawn_pillars(zone)
-    announce_progress()
     pyxel.run(update, draw)
