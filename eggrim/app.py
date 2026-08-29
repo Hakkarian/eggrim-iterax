@@ -61,7 +61,7 @@ player = Player(
     side=1.0,
 )
 
-pillars = spawn_pillars()
+pillars = []
 thrust = ThrustState()
 
 zone = None
@@ -327,10 +327,12 @@ def draw():
 
 
 def run():
-    global zone
+    global zone, pillars
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
+    pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
     render_tiles()
     zone = load_zone("arena")
+    pillars = spawn_pillars(zone)
     announce_progress()
     pyxel.run(update, draw)
