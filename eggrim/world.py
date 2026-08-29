@@ -4,6 +4,7 @@ PLAYER_ZONE_MARGIN = 12.0
 PILLAR_BASE_RX = 2.0
 PILLAR_BASE_RY = 1.5
 PLAYER_FEET_RADIUS = 2.0
+PLAYER_FEET_OFFSET_Y = 8.0
 
 from eggrim.zones import TILE
 
@@ -44,7 +45,7 @@ def circle_hits_wall(zone, x, y, radius):
 
 
 def feet_hits_wall(zone, x, y):
-    return circle_hits_wall(zone, x, y, PLAYER_FEET_RADIUS)
+    return circle_hits_wall(zone, x, y + PLAYER_FEET_OFFSET_Y, PLAYER_FEET_RADIUS)
 
 
 def resolve_pillars(player, pillars):
