@@ -5,7 +5,7 @@ SCREEN_H = 144
 FPS = 60
 MOVE_SPEED = 40.0
 
-from eggrim.assets import load_banks
+from eggrim.assets import PORTRAIT_BLEND_POS, load_banks
 from eggrim.combat import (
     PILLAR_HIT_RADIUS,
     THRUST_ANIM_FRAMES,
@@ -62,8 +62,21 @@ player = Player(
 pillars = spawn_pillars()
 thrust = ThrustState()
 
+portrait_to = "side"
+portrait_from = None
+portrait_fade = 0
+PORTRAIT_FADE_FRAMES = 2
+
+
+def portrait_key(view):
+    if view in (Facing.LEFT, Facing.RIGHT):
+        return "side"
+    up = view is Facing.UP
+    return "back" if up else "front"
+
 
 def update():
+    global portrait_to, portrait_from, portrait_fade
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -139,6 +152,14 @@ def update():
             pillar.flash -= 1
 
     resolve_pillars(player, pillars)
+
+    key = portrait_key(player.view)
+    if key != portrait_to:
+        portrait_from = portrait_to
+        portrait_to = key
+        portrait_fade = PORTRAIT_FADE_FRAMES + 1
+    if portrait_fade > 0:
+        portrait_fade -= 1
 
     if outside_world(player.x, player.y):
         player.x = float(PLAYER_START_X)
@@ -267,13 +288,18 @@ def draw():
         player.stamina,
         STAT_MAX,
     )
-    if view in (Facing.LEFT, Facing.RIGHT):
-        px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
-    elif view is Facing.UP:
-        px_src, portrait_w = 96, 32
+    if portrait_fade > 0 and portrait_from is not None:
+        step = PORTRAIT_FADE_FRAMES - portrait_fade + 1
+        u, v = PORTRAIT_BLEND_POS[(portrait_from, portrait_to, step)]
+        pyxel.blt(0, 0, 0, u, v, 32, 32, 3)
     else:
-        px_src, portrait_w = 64, 32
-    pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
+        if view in (Facing.LEFT, Facing.RIGHT):
+            px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
+        elif view is Facing.UP:
+            px_src, portrait_w = 96, 32
+        else:
+            px_src, portrait_w = 64, 32
+        pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
 
 
 def run():
