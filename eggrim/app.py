@@ -219,13 +219,22 @@ def draw():
     walk_frame = (0, 1, 2, 1)[player.walk_phase % 20 // 5]
     if not attacking and player.sprinting and walk_frame == 1:
         sprite_y -= 1
-    if view in (Facing.LEFT, Facing.RIGHT):
-        frames = ((0, 0), (48, 32), (0, 32), (0, 48))
-    elif view is Facing.UP:
-        frames = ((0, 16), (80, 32), (32, 32), (32, 48))
+    if attacking:
+        if thrust.anim == THRUST_ANIM_FRAMES or thrust.anim == 1:
+            pose = 3
+        elif thrust.anim == THRUST_ANIM_FRAMES - 1 or thrust.anim == 2:
+            pose = 4
+        else:
+            pose = 5
     else:
-        frames = ((16, 0), (64, 32), (16, 32), (16, 48))
-    sprite_u, sprite_v = frames[3] if attacking else frames[walk_frame]
+        pose = walk_frame
+    if view in (Facing.LEFT, Facing.RIGHT):
+        frames = ((0, 0), (48, 32), (0, 32), (96, 32), (144, 32), (0, 48))
+    elif view is Facing.UP:
+        frames = ((0, 16), (80, 32), (32, 32), (128, 32), (176, 32), (32, 48))
+    else:
+        frames = ((16, 0), (64, 32), (16, 32), (112, 32), (160, 32), (16, 48))
+    sprite_u, sprite_v = frames[pose]
     if attacking and view is Facing.UP:
         draw_strike(view)
     if view in (Facing.LEFT, Facing.RIGHT):

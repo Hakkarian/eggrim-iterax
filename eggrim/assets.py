@@ -4,6 +4,7 @@ import pyxel
 SPRITE_LETTERS = {
     ".": "0", "H": "8", "W": "7", "G": "6", "B": "c",
     "L": "6", "C": "1", "S": "7", "J": "9", "K": "0", "N": "5", "D": "e", "M": "c",
+    "E": "d", "F": "5",
 }
 SPRITE_ROWS = (
     "......WGWG......",
@@ -199,6 +200,12 @@ def load_banks():
     pyxel.images[0].set(48, 32, SIDE_HALF_CHARS)
     pyxel.images[0].set(64, 32, FRONT_HALF_CHARS)
     pyxel.images[0].set(80, 32, BACK_HALF_CHARS)
+    pyxel.images[0].set(96, 32, SIDE_BLEND_CHARS)
+    pyxel.images[0].set(112, 32, FRONT_BLEND_CHARS)
+    pyxel.images[0].set(128, 32, BACK_BLEND_CHARS)
+    pyxel.images[0].set(144, 32, SIDE_FADE_CHARS)
+    pyxel.images[0].set(160, 32, FRONT_FADE_CHARS)
+    pyxel.images[0].set(176, 32, BACK_FADE_CHARS)
     render_pillar_flash()
 
 
@@ -295,3 +302,30 @@ BACK_HALF_ROWS = BACK_ROWS[:13] + (
 SIDE_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_HALF_ROWS)
 FRONT_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_HALF_ROWS)
 BACK_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_HALF_ROWS)
+
+FRONT_BLEND_ROWS = tuple(
+    "".join("E" if (x, y) in FRONT_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(FRONT_ROWS)
+)
+BACK_BLEND_ROWS = tuple(
+    "".join("E" if (x, y) in BACK_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(BACK_ROWS)
+)
+SIDE_BLEND_ROWS = tuple(row.replace("L", "E") for row in SPRITE_ROWS)
+
+FRONT_FADE_ROWS = tuple(
+    "".join("F" if (x, y) in FRONT_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(FRONT_ROWS)
+)
+BACK_FADE_ROWS = tuple(
+    "".join("F" if (x, y) in BACK_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(BACK_ROWS)
+)
+SIDE_FADE_ROWS = tuple(row.replace("L", "F") for row in SPRITE_ROWS)
+
+SIDE_BLEND_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_BLEND_ROWS)
+FRONT_BLEND_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_BLEND_ROWS)
+BACK_BLEND_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_BLEND_ROWS)
+SIDE_FADE_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_FADE_ROWS)
+FRONT_FADE_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_FADE_ROWS)
+BACK_FADE_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_FADE_ROWS)
