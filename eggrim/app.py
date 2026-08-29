@@ -7,7 +7,6 @@ MOVE_SPEED = 40.0
 
 from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
 from eggrim.combat import (
-    PILLAR_HIT_RADIUS,
     THRUST_ANIM_FRAMES,
     THRUST_FIST_RADIUS,
     THRUST_COOLDOWN_FRAMES,
@@ -16,12 +15,15 @@ from eggrim.combat import (
     THRUST_REACH,
     THRUST_EXTEND_POINT,
     ThrustState,
-    thrust_target,
+    thrust_pillar_target,
+    thrust_wall_target,
 )
-from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars
+from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars, spawn_walls
 from eggrim.fog import (
     FOG_COLOR,
     TILE_TINT_V,
+    WALL_FLASH_U,
+    WALL_FLASH_V,
     pillar_tint_level,
     render_pillar_tints,
     render_tile_tints,
@@ -69,6 +71,7 @@ player = Player(
 )
 
 pillars = []
+walls = {}
 thrust = ThrustState()
 
 zone = None
@@ -93,7 +96,7 @@ def portrait_key(view):
 
 
 def update():
-    global portrait_to, portrait_from, portrait_fade
+    global portrait_to, portrait_from, portrait_fade, walls
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -156,12 +159,16 @@ def update():
         thrust.cooldown = THRUST_COOLDOWN_FRAMES
         thrust.anim = THRUST_ANIM_FRAMES
         thrust.facing = player.facing
-        target = thrust_target(player, pillars)
+        shoulder_x, shoulder_y = shoulder_point(player.view)
+        shoulder_along = (
+            (shoulder_x - player.x) * player.facing[0]
+            + (shoulder_y - player.y) * player.facing[1]
+        )
+        target, target_contact = thrust_pillar_target(
+            player, pillars, THRUST_REACH + shoulder_along
+        )
         if target is not None:
-            target_dist = ((target.x - player.x) ** 2 + (target.y - player.y) ** 2) ** 0.5
-            thrust.max_reach = max(
-                2.0, min(THRUST_REACH, target_dist - PILLAR_HIT_RADIUS - THRUST_FIST_RADIUS)
-            )
+            thrust.max_reach = max(2.0, min(THRUST_REACH, target_contact - shoulder_along + 1.0))
             target.hp -= THRUST_DAMAGE
             target.flash = PILLAR_FLASH_FRAMES
             knockback_x = player.x - player.facing[0] * THRUST_KNOCKBACK
@@ -170,10 +177,32 @@ def update():
                 player.x = knockback_x
                 player.y = knockback_y
         else:
-            thrust.max_reach = THRUST_REACH
+            wall_target, wall_dist = thrust_wall_target(
+                player, zone, walls, THRUST_REACH + shoulder_along
+            )
+            if wall_target is not None:
+                thrust.max_reach = max(2.0, min(THRUST_REACH, wall_dist - shoulder_along + 1.0))
+                wall_target.hp -= THRUST_DAMAGE
+                wall_target.flash = PILLAR_FLASH_FRAMES
+                knockback_x = player.x - player.facing[0] * THRUST_KNOCKBACK
+                knockback_y = player.y - player.facing[1] * THRUST_KNOCKBACK
+                if not feet_hits_wall(zone, knockback_x, knockback_y):
+                    player.x = knockback_x
+                    player.y = knockback_y
+                if wall_target.hp <= 0:
+                    tile_x = wall_target.tile_x
+                    tile_y = wall_target.tile_y
+                    row = zone.grid[tile_y]
+                    zone.grid[tile_y] = row[:tile_x] + "." + row[tile_x + 1 :]
+                    del walls[(tile_x, tile_y)]
+            else:
+                thrust.max_reach = THRUST_REACH
     for pillar in pillars:
         if pillar.flash > 0:
             pillar.flash -= 1
+    for wall in walls.values():
+        if wall.flash > 0:
+            wall.flash -= 1
 
     resolve_pillars(player, pillars)
 
@@ -208,6 +237,14 @@ def draw_shield(view):
         pyxel.pset(px, py - 1, 7)
 
 
+def shoulder_point(view):
+    if view in (Facing.LEFT, Facing.RIGHT):
+        return player.x + (3.0 if view is Facing.RIGHT else -3.0), player.y - 3.0
+    if view is Facing.UP:
+        return player.x + 1.0, player.y - 2.0
+    return player.x + 1.0, player.y + 2.0
+
+
 def draw_strike(view):
     progress = 1 - thrust.anim / THRUST_ANIM_FRAMES
     if progress < THRUST_EXTEND_POINT:
@@ -215,13 +252,7 @@ def draw_strike(view):
     else:
         strike = 1 - (progress - THRUST_EXTEND_POINT) / (1 - THRUST_EXTEND_POINT)
     reach = thrust.max_reach * strike
-    if view in (Facing.LEFT, Facing.RIGHT):
-        shoulder_x = player.x + (3.0 if view is Facing.RIGHT else -3.0)
-        shoulder_y = player.y - 3.0
-    elif view is Facing.UP:
-        shoulder_x, shoulder_y = player.x + 1.0, player.y - 2.0
-    else:
-        shoulder_x, shoulder_y = player.x + 1.0, player.y + 2.0
+    shoulder_x, shoulder_y = shoulder_point(view)
     fist_x = shoulder_x + thrust.facing[0] * reach
     fist_y = shoulder_y + thrust.facing[1] * reach
     pyxel.line(int(shoulder_x), int(shoulder_y), int(fist_x), int(fist_y), 6)
@@ -260,12 +291,16 @@ def draw_world_tiles(cam_x, cam_y):
             if level is None:
                 continue
             kind = TILE_TYPE_INDEX[row[tile_x]]
+            src_u = level * TILE
+            src_v = TILE_TINT_V + kind * TILE
+            if kind == 2 and (tile_x, tile_y) in walls and walls[(tile_x, tile_y)].flash > 0:
+                src_u, src_v = WALL_FLASH_U, WALL_FLASH_V
             pyxel.blt(
                 tile_x * TILE,
                 tile_y * TILE,
                 2,
-                level * TILE,
-                TILE_TINT_V + kind * TILE,
+                src_u,
+                src_v,
                 TILE,
                 TILE,
                 0,
@@ -352,7 +387,7 @@ def draw():
 
 
 def run():
-    global zone, pillars
+    global zone, pillars, walls
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
@@ -360,4 +395,5 @@ def run():
     render_tile_tints()
     zone = load_zone("arena")
     pillars = spawn_pillars(zone)
+    walls = spawn_walls(zone)
     pyxel.run(update, draw)

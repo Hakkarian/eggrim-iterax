@@ -11,6 +11,9 @@ TILE_TINT_SRC_X = (0, 8, 16)
 TILE_TINT_SRC_Y = 128
 TILE_TINT_V = 48
 
+WALL_FLASH_U = 96
+WALL_FLASH_V = 64
+
 
 def palette_rgb(value):
     return ((value >> 16) & 255, (value >> 8) & 255, value & 255)
@@ -81,3 +84,11 @@ def render_tile_tints():
                         )
                 rows.append("".join(chars))
             dst.set(level * 8, TILE_TINT_V + type_index * 8, rows)
+    flash_rows = []
+    for y in range(8):
+        chars = []
+        for x in range(8):
+            col = src.pget(16 + x, TILE_TINT_SRC_Y + y)
+            chars.append("0" if col == 0 else "7")
+        flash_rows.append("".join(chars))
+    dst.set(WALL_FLASH_U, WALL_FLASH_V, flash_rows)
