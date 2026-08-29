@@ -5,6 +5,8 @@ PILLAR_BASE_RX = 2.0
 PILLAR_BASE_RY = 1.5
 PLAYER_FEET_RADIUS = 2.0
 
+from eggrim.zones import TILE
+
 
 def outside_zone(zone, x, y):
     return (
@@ -13,6 +15,26 @@ def outside_zone(zone, x, y):
         or x > zone.width_px - PLAYER_ZONE_MARGIN
         or y > zone.height_px - PLAYER_ZONE_MARGIN
     )
+
+
+def feet_hits_wall(zone, x, y):
+    radius = PLAYER_FEET_RADIUS
+    tile_x0 = max(0, int((x - radius) // TILE))
+    tile_x1 = min(zone.width_tiles - 1, int((x + radius) // TILE))
+    tile_y0 = max(0, int((y - radius) // TILE))
+    tile_y1 = min(zone.height_tiles - 1, int((y + radius) // TILE))
+    for tile_y in range(tile_y0, tile_y1 + 1):
+        row = zone.grid[tile_y]
+        for tile_x in range(tile_x0, tile_x1 + 1):
+            if row[tile_x] != "#":
+                continue
+            wall_x0 = tile_x * TILE
+            wall_y0 = tile_y * TILE
+            near_x = max(wall_x0, min(x, wall_x0 + TILE))
+            near_y = max(wall_y0, min(y, wall_y0 + TILE))
+            if (near_x - x) ** 2 + (near_y - y) ** 2 <= radius * radius:
+                return True
+    return False
 
 
 def resolve_pillars(player, pillars):

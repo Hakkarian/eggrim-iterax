@@ -53,6 +53,7 @@ from eggrim.world import (
     PLAYER_ZONE_MARGIN,
     PLAYER_START_X,
     PLAYER_START_Y,
+    feet_hits_wall,
     outside_zone,
     resolve_pillars,
 )
@@ -133,8 +134,12 @@ def update():
             player.stamina = max(0.0, player.stamina - SPRINT_DRAIN / FPS)
         else:
             player.sprinting = False
-        player.x += player.facing[0] * speed / FPS
-        player.y += player.facing[1] * speed / FPS
+        new_x = player.x + player.facing[0] * speed / FPS
+        new_y = player.y + player.facing[1] * speed / FPS
+        if not feet_hits_wall(zone, new_x, player.y):
+            player.x = new_x
+        if not feet_hits_wall(zone, player.x, new_y):
+            player.y = new_y
     if not drained:
         player.sprinting = False
         player.stamina = min(STAT_MAX, player.stamina + STAMINA_REGEN / FPS)
@@ -159,8 +164,11 @@ def update():
             )
             target.hp -= THRUST_DAMAGE
             target.flash = PILLAR_FLASH_FRAMES
-            player.x -= player.facing[0] * THRUST_KNOCKBACK
-            player.y -= player.facing[1] * THRUST_KNOCKBACK
+            knockback_x = player.x - player.facing[0] * THRUST_KNOCKBACK
+            knockback_y = player.y - player.facing[1] * THRUST_KNOCKBACK
+            if not feet_hits_wall(zone, knockback_x, knockback_y):
+                player.x = knockback_x
+                player.y = knockback_y
         else:
             thrust.max_reach = THRUST_REACH
     for pillar in pillars:
