@@ -5,7 +5,7 @@ SCREEN_H = 144
 FPS = 60
 MOVE_SPEED = 40.0
 
-from eggrim.assets import PORTRAIT_BLEND_POS, load_banks
+from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
 from eggrim.combat import (
     PILLAR_HIT_RADIUS,
     THRUST_ANIM_FRAMES,
@@ -304,5 +304,6 @@ def draw():
 
 def run():
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
+    pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
     announce_progress()
     pyxel.run(update, draw)
