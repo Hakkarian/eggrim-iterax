@@ -27,6 +27,7 @@ class Player:
     stamina: float = STAT_MAX
     sprinting: bool = False
     blocking: bool = False
+    walk_phase: int = 0
 
     @property
     def view(self):

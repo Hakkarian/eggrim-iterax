@@ -8,7 +8,7 @@ class GameState(Enum):
     COMBAT = auto()
 
 
-PHASES_REACHED = GameState.FOG
+PHASES_REACHED = GameState.COMBAT
 
 
 def announce_progress():
