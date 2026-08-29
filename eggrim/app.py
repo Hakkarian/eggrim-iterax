@@ -44,9 +44,10 @@ from eggrim.player import (
 from eggrim.states import announce_progress
 from eggrim.zones import TILE, load_zone, render_tiles
 from eggrim.world import (
+    PLAYER_ZONE_MARGIN,
     PLAYER_START_X,
     PLAYER_START_Y,
-    outside_world,
+    outside_zone,
     resolve_pillars,
 )
 
@@ -170,9 +171,10 @@ def update():
     if portrait_fade > 0:
         portrait_fade -= 1
 
-    if outside_world(player.x, player.y):
-        player.x = float(PLAYER_START_X)
-        player.y = float(PLAYER_START_Y)
+    if outside_zone(zone, player.x, player.y):
+        margin = PLAYER_ZONE_MARGIN
+        player.x = max(margin, min(player.x, zone.width_px - margin))
+        player.y = max(margin, min(player.y, zone.height_px - margin))
 
 
 def draw_shield(view):

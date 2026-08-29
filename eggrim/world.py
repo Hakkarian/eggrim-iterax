@@ -1,16 +1,18 @@
 PLAYER_START_X = 128
 PLAYER_START_Y = 72
-WORLD_RADIUS_X = 120.0
-WORLD_RADIUS_Y = 68.0
+PLAYER_ZONE_MARGIN = 12.0
 PILLAR_BASE_RX = 2.0
 PILLAR_BASE_RY = 1.5
 PLAYER_FEET_RADIUS = 2.0
 
 
-def outside_world(x, y):
-    offset_x = x - PLAYER_START_X
-    offset_y = y - PLAYER_START_Y
-    return (offset_x / WORLD_RADIUS_X) ** 2 + (offset_y / WORLD_RADIUS_Y) ** 2 > 1.0
+def outside_zone(zone, x, y):
+    return (
+        x < PLAYER_ZONE_MARGIN
+        or y < PLAYER_ZONE_MARGIN
+        or x > zone.width_px - PLAYER_ZONE_MARGIN
+        or y > zone.height_px - PLAYER_ZONE_MARGIN
+    )
 
 
 def resolve_pillars(player, pillars):
