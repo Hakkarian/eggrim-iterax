@@ -50,8 +50,16 @@ from eggrim.player import (
     STAMINA_REGEN,
     STAT_MAX,
 )
-from eggrim.zones import TILE_TYPE_INDEX, TILE, load_zone, render_tiles
+from eggrim.zones import (
+    TILE,
+    TILE_TYPE_INDEX,
+    ZONE_LINKS,
+    load_zone,
+    render_tiles,
+)
 from eggrim.world import (
+    PLAYER_FEET_OFFSET_Y,
+    PLAYER_FEET_RADIUS,
     PLAYER_ZONE_MARGIN,
     PLAYER_START_X,
     PLAYER_START_Y,
@@ -75,6 +83,42 @@ walls = {}
 thrust = ThrustState()
 
 zone = None
+player_on_door = False
+
+
+def door_at(zone, feet_x, feet_y):
+    for index, (door_x, door_y) in enumerate(zone.doors):
+        if not door_x * TILE <= feet_x < (door_x + 1) * TILE:
+            continue
+        below_open = door_y + 1 < zone.height_tiles and zone.grid[door_y + 1][door_x] != "#"
+        above_open = door_y > 0 and zone.grid[door_y - 1][door_x] != "#"
+        if below_open:
+            if (
+                feet_y <= (door_y + 1) * TILE + PLAYER_FEET_RADIUS + 1.0
+                and player.facing[1] < 0
+            ):
+                return index
+        elif above_open:
+            if door_y * TILE <= feet_y < (door_y + 1) * TILE:
+                return index
+    return None
+
+
+def move_to_zone(target_name, door_index, feet):
+    global zone, pillars, walls
+    src_x, _ = zone.doors[door_index]
+    src_width = feet[0] - src_x * TILE
+    zone = load_zone(target_name)
+    pillars = spawn_pillars(zone)
+    walls = spawn_walls(zone)
+    dst_x, dst_y = zone.doors[door_index]
+    below_open = dst_y + 1 < zone.height_tiles and zone.grid[dst_y + 1][dst_x] != "#"
+    if below_open:
+        exit_feet_y = (dst_y + 1) * TILE + PLAYER_FEET_RADIUS + 0.5
+    else:
+        exit_feet_y = dst_y * TILE - PLAYER_FEET_RADIUS - 0.5
+    player.x = dst_x * TILE + src_width
+    player.y = exit_feet_y - PLAYER_FEET_OFFSET_Y
 
 
 def camera_following_player():
@@ -96,7 +140,7 @@ def portrait_key(view):
 
 
 def update():
-    global portrait_to, portrait_from, portrait_fade, walls
+    global portrait_to, portrait_from, portrait_fade, walls, player_on_door
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -218,6 +262,16 @@ def update():
         margin = PLAYER_ZONE_MARGIN
         player.x = max(margin, min(player.x, zone.width_px - margin))
         player.y = max(margin, min(player.y, zone.height_px - margin))
+
+    feet_x = player.x
+    feet_y = player.y + PLAYER_FEET_OFFSET_Y
+    door_index = door_at(zone, feet_x, feet_y)
+    on_door = door_index is not None
+    if on_door and not player_on_door:
+        link = ZONE_LINKS.get((zone.name, door_index))
+        if link is not None:
+            move_to_zone(link[0], link[1], (feet_x, feet_y))
+    player_on_door = on_door
 
 
 def draw_shield(view):
@@ -394,6 +448,7 @@ def run():
     render_tiles()
     render_tile_tints()
     zone = load_zone("arena")
+    player.x, player.y = zone.player_start
     pillars = spawn_pillars(zone)
     walls = spawn_walls(zone)
     pyxel.run(update, draw)

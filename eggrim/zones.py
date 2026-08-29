@@ -7,11 +7,23 @@ TILE = 8
 TILE_FLOOR_A = "0010"
 TILE_FLOOR_B = "0110"
 TILE_WALL = "0210"
-LEGEND = {".": TILE_FLOOR_A, ",": TILE_FLOOR_B, "#": TILE_WALL, "P": TILE_FLOOR_A}
+LEGEND = {
+    ".": TILE_FLOOR_A,
+    ",": TILE_FLOOR_B,
+    "#": TILE_WALL,
+    "P": TILE_FLOOR_A,
+    "@": TILE_FLOOR_A,
+    "D": TILE_FLOOR_A,
+}
 
-ENTITY_MARKERS = {"P": "pillar"}
+ENTITY_MARKERS = {"P": "pillar", "@": "player_start", "D": "door"}
 CHUNK_TILES = 32
-TILE_TYPE_INDEX = {".": 0, ",": 1, "#": 2, "P": 0}
+TILE_TYPE_INDEX = {".": 0, ",": 1, "#": 2, "P": 0, "@": 0, "D": 0}
+
+ZONE_LINKS = {
+    ("arena", 0): ("chamber", 0),
+    ("chamber", 0): ("arena", 0),
+}
 
 
 class Zone:
@@ -23,7 +35,16 @@ class Zone:
         self.width_px = width_tiles * TILE
         self.height_px = height_tiles * TILE
         self.markers = markers
-        self.pillar_spawns = markers["pillar"]
+        self.pillar_spawns = [
+            ((x + 0.5) * TILE, (y + 0.5) * TILE) for x, y in markers["pillar"]
+        ]
+        self.doors = list(markers["door"])
+        start = (
+            markers["player_start"][0]
+            if markers["player_start"]
+            else (width_tiles / 2 - 0.5, height_tiles / 2 - 0.5)
+        )
+        self.player_start = ((start[0] + 0.5) * TILE, (start[1] + 0.5) * TILE)
         self.grid = grid
 
 
@@ -72,7 +93,7 @@ def load_zone(name):
     for y, row in enumerate(rows):
         for x, ch in enumerate(row):
             if ch in ENTITY_MARKERS:
-                markers[ENTITY_MARKERS[ch]].append(((x + 0.5) * TILE, (y + 0.5) * TILE))
+                markers[ENTITY_MARKERS[ch]].append((x, y))
     chunks = []
     for chunk_y in range(0, len(rows), CHUNK_TILES):
         for chunk_x in range(0, width, CHUNK_TILES):
