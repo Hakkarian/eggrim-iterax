@@ -189,7 +189,28 @@ def load_banks():
     pyxel.images[0].set(32, 0, PORTRAIT_CHARS)
     pyxel.images[0].set(64, 0, PORTRAIT_FRONT_CHARS)
     pyxel.images[0].set(96, 0, PORTRAIT_BACK_CHARS)
-    pyxel.images[0].set(96, 16, PILLAR_CHARS)
+    pyxel.images[0].set(128, 0, PILLAR_CHARS)
+    pyxel.images[0].set(0, 48, SIDE_ATTACK_CHARS)
+    pyxel.images[0].set(16, 48, FRONT_ATTACK_CHARS)
+    pyxel.images[0].set(32, 48, BACK_ATTACK_CHARS)
+    pyxel.images[0].set(0, 32, SIDE_WALK_CHARS)
+    pyxel.images[0].set(16, 32, FRONT_WALK_CHARS)
+    pyxel.images[0].set(32, 32, BACK_WALK_CHARS)
+    pyxel.images[0].set(48, 32, SIDE_HALF_CHARS)
+    pyxel.images[0].set(64, 32, FRONT_HALF_CHARS)
+    pyxel.images[0].set(80, 32, BACK_HALF_CHARS)
+    render_pillar_flash()
+
+
+def render_pillar_flash():
+    rows = []
+    for y in range(16):
+        row = []
+        for x in range(16):
+            col = pyxel.images[0].pget(128 + x, y)
+            row.append("0" if col == 0 else "7")
+        rows.append("".join(row))
+    pyxel.images[2].set(48, 16, rows)
 
 
 PILLAR_LETTERS = {".": "0", "W": "7", "G": "d"}
@@ -217,3 +238,60 @@ PILLAR_CHARS = tuple(
     "".join(PILLAR_LETTERS[ch] for ch in row)
     for row in PILLAR_ROWS
 )
+
+FRONT_HAND_CELLS = {(2, 9), (13, 9), (2, 10), (13, 10)}
+BACK_HAND_CELLS = {(2, 7), (13, 7), (2, 8), (13, 8), (2, 9), (13, 9)}
+
+SPRITE_ATTACK_ROWS = tuple(row.replace("L", ".") for row in SPRITE_ROWS)
+FRONT_ATTACK_ROWS = tuple(
+    "".join("." if (x, y) in FRONT_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(FRONT_ROWS)
+)
+BACK_ATTACK_ROWS = tuple(
+    "".join("." if (x, y) in BACK_HAND_CELLS else ch for x, ch in enumerate(row))
+    for y, row in enumerate(BACK_ROWS)
+)
+
+SIDE_ATTACK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SPRITE_ATTACK_ROWS)
+FRONT_ATTACK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_ATTACK_ROWS)
+BACK_ATTACK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_ATTACK_ROWS)
+
+SIDE_WALK_ROWS = SPRITE_ROWS[:11] + (
+    "....BB..BB......",
+    "...BB....BB.....",
+    "..SS......SS....",
+)
+FRONT_WALK_ROWS = FRONT_ROWS[:13] + (
+    "...BB......BB...",
+    "...BB......BB...",
+    "..SS........SS..",
+)
+BACK_WALK_ROWS = BACK_ROWS[:13] + (
+    "...BB......BB...",
+    "...BB......BB...",
+    "..SS........SS..",
+)
+
+SIDE_WALK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_WALK_ROWS)
+FRONT_WALK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_WALK_ROWS)
+BACK_WALK_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_WALK_ROWS)
+
+SIDE_HALF_ROWS = SPRITE_ROWS[:11] + (
+    "....BB.BB.......",
+    "....BB..BB......",
+    "...SS....SS.....",
+)
+FRONT_HALF_ROWS = FRONT_ROWS[:13] + (
+    "....BB....BB....",
+    "...BB......BB...",
+    "...SS......SS...",
+)
+BACK_HALF_ROWS = BACK_ROWS[:13] + (
+    "....BB....BB....",
+    "...BB......BB...",
+    "...SS......SS...",
+)
+
+SIDE_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_HALF_ROWS)
+FRONT_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_HALF_ROWS)
+BACK_HALF_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in BACK_HALF_ROWS)

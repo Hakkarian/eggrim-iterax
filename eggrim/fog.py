@@ -43,8 +43,9 @@ def render_fog():
     pyxel.images[1].set(0, 0, rows)
 
 
-PILLAR_TINT_ALPHAS = (0.3, 0.55, 0.8)
-PILLAR_RING_RADII = (45.0, 75.0, 105.0)
+PILLAR_TINT_STEPS = 11
+PILLAR_VIS_INNER = 45.0
+PILLAR_VIS_OUTER = 105.0
 
 
 def blend_color_to_fog(rgb, alpha):
@@ -52,28 +53,32 @@ def blend_color_to_fog(rgb, alpha):
 
 
 def pillar_tint_level(dist):
-    for level, radius in enumerate(PILLAR_RING_RADII):
-        if dist <= radius:
-            return level - 1
-    return len(PILLAR_TINT_ALPHAS) - 1
+    if dist >= PILLAR_VIS_OUTER:
+        return None
+    if dist <= PILLAR_VIS_INNER:
+        return 0
+    return round(
+        (dist - PILLAR_VIS_INNER) / (PILLAR_VIS_OUTER - PILLAR_VIS_INNER) * (PILLAR_TINT_STEPS - 1)
+    )
 
 
 def render_pillar_tints():
     src = pyxel.images[0]
     dst = pyxel.images[2]
-    for level, alpha in enumerate(PILLAR_TINT_ALPHAS):
+    for level in range(PILLAR_TINT_STEPS):
+        alpha = level / (PILLAR_TINT_STEPS - 1)
         rows = []
         for y in range(16):
             chars = []
             for x in range(16):
-                col = src.pget(96 + x, 16 + y)
+                col = src.pget(128 + x, y)
                 if col == 0:
                     chars.append("0")
                 else:
                     rgb = palette_rgb(pyxel.colors[col])
                     chars.append("0123456789abcdef"[nearest_fog_palette(blend_color_to_fog(rgb, alpha))])
             rows.append("".join(chars))
-        dst.set(16 * level, 16, rows)
+        dst.set(16 * level, 32, rows)
 
 
 render_fog()

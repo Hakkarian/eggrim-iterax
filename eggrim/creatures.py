@@ -7,6 +7,7 @@ PILLAR_HP = 999
 PILLAR_COUNT = 8
 PILLAR_RING_RADIUS_X = 85.0
 PILLAR_RING_RADIUS_Y = 45.0
+PILLAR_FLASH_FRAMES = 8
 
 
 @dataclass
@@ -14,6 +15,7 @@ class Pillar:
     x: float
     y: float
     hp: int = PILLAR_HP
+    flash: int = 0
 
 
 def spawn_pillars():
