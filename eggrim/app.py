@@ -7,7 +7,6 @@ MOVE_SPEED = 40.0
 
 from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
 from eggrim.combat import (
-    PILLAR_HIT_RADIUS,
     THRUST_ANIM_FRAMES,
     THRUST_FIST_RADIUS,
     THRUST_COOLDOWN_FRAMES,
@@ -16,10 +15,19 @@ from eggrim.combat import (
     THRUST_REACH,
     THRUST_EXTEND_POINT,
     ThrustState,
-    thrust_target,
+    thrust_pillar_target,
+    thrust_wall_target,
 )
-from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars
-from eggrim.fog import FOG_HALF, FOG_SIZE, pillar_tint_level, render_pillar_tints
+from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars, spawn_walls
+from eggrim.fog import (
+    FOG_COLOR,
+    TILE_TINT_V,
+    WALL_FLASH_U,
+    WALL_FLASH_V,
+    pillar_tint_level,
+    render_pillar_tints,
+    render_tile_tints,
+)
 from eggrim.hud import (
     HEALTH_BAR_Y,
     HEALTH_COLOR,
@@ -29,6 +37,7 @@ from eggrim.hud import (
     STAMINA_BAR_Y,
     STAMINA_COLOR,
     draw_bar,
+    draw_minimap,
 )
 from eggrim.player import (
     BLOCK_DRAIN,
@@ -41,11 +50,21 @@ from eggrim.player import (
     STAMINA_REGEN,
     STAT_MAX,
 )
-from eggrim.states import announce_progress
+from eggrim.zones import (
+    TILE,
+    TILE_TYPE_INDEX,
+    ZONE_LINKS,
+    load_zone,
+    render_tiles,
+)
 from eggrim.world import (
+    PLAYER_FEET_OFFSET_Y,
+    PLAYER_FEET_RADIUS,
+    PLAYER_ZONE_MARGIN,
     PLAYER_START_X,
     PLAYER_START_Y,
-    outside_world,
+    feet_hits_wall,
+    outside_zone,
     resolve_pillars,
 )
 
@@ -59,8 +78,53 @@ player = Player(
     side=1.0,
 )
 
-pillars = spawn_pillars()
+pillars = []
+walls = {}
 thrust = ThrustState()
+
+zone = None
+player_on_door = False
+
+
+def door_at(zone, feet_x, feet_y):
+    for index, (door_x, door_y) in enumerate(zone.doors):
+        if not door_x * TILE <= feet_x < (door_x + 1) * TILE:
+            continue
+        below_open = door_y + 1 < zone.height_tiles and zone.grid[door_y + 1][door_x] != "#"
+        above_open = door_y > 0 and zone.grid[door_y - 1][door_x] != "#"
+        if below_open:
+            if (
+                feet_y <= (door_y + 1) * TILE + PLAYER_FEET_RADIUS + 1.0
+                and player.facing[1] < 0
+            ):
+                return index
+        elif above_open:
+            if door_y * TILE <= feet_y < (door_y + 1) * TILE:
+                return index
+    return None
+
+
+def move_to_zone(target_name, door_index, feet):
+    global zone, pillars, walls
+    src_x, _ = zone.doors[door_index]
+    src_width = feet[0] - src_x * TILE
+    zone = load_zone(target_name)
+    pillars = spawn_pillars(zone)
+    walls = spawn_walls(zone)
+    dst_x, dst_y = zone.doors[door_index]
+    below_open = dst_y + 1 < zone.height_tiles and zone.grid[dst_y + 1][dst_x] != "#"
+    if below_open:
+        exit_feet_y = (dst_y + 1) * TILE + PLAYER_FEET_RADIUS + 0.5
+    else:
+        exit_feet_y = dst_y * TILE - PLAYER_FEET_RADIUS - 0.5
+    player.x = dst_x * TILE + src_width
+    player.y = exit_feet_y - PLAYER_FEET_OFFSET_Y
+
+
+def camera_following_player():
+    cam_x = max(0, min(int(player.x) - SCREEN_W // 2, zone.width_px - SCREEN_W))
+    cam_y = max(0, min(int(player.y) - SCREEN_H // 2, zone.height_px - SCREEN_H))
+    return cam_x, cam_y
 
 portrait_to = "side"
 portrait_from = None
@@ -76,7 +140,7 @@ def portrait_key(view):
 
 
 def update():
-    global portrait_to, portrait_from, portrait_fade
+    global portrait_to, portrait_from, portrait_fade, walls, player_on_door
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -117,8 +181,12 @@ def update():
             player.stamina = max(0.0, player.stamina - SPRINT_DRAIN / FPS)
         else:
             player.sprinting = False
-        player.x += player.facing[0] * speed / FPS
-        player.y += player.facing[1] * speed / FPS
+        new_x = player.x + player.facing[0] * speed / FPS
+        new_y = player.y + player.facing[1] * speed / FPS
+        if not feet_hits_wall(zone, new_x, player.y):
+            player.x = new_x
+        if not feet_hits_wall(zone, player.x, new_y):
+            player.y = new_y
     if not drained:
         player.sprinting = False
         player.stamina = min(STAT_MAX, player.stamina + STAMINA_REGEN / FPS)
@@ -135,21 +203,50 @@ def update():
         thrust.cooldown = THRUST_COOLDOWN_FRAMES
         thrust.anim = THRUST_ANIM_FRAMES
         thrust.facing = player.facing
-        target = thrust_target(player, pillars)
+        shoulder_x, shoulder_y = shoulder_point(player.view)
+        shoulder_along = (
+            (shoulder_x - player.x) * player.facing[0]
+            + (shoulder_y - player.y) * player.facing[1]
+        )
+        target, target_contact = thrust_pillar_target(
+            player, pillars, THRUST_REACH + shoulder_along
+        )
         if target is not None:
-            target_dist = ((target.x - player.x) ** 2 + (target.y - player.y) ** 2) ** 0.5
-            thrust.max_reach = max(
-                2.0, min(THRUST_REACH, target_dist - PILLAR_HIT_RADIUS - THRUST_FIST_RADIUS)
-            )
+            thrust.max_reach = max(2.0, min(THRUST_REACH, target_contact - shoulder_along + 1.0))
             target.hp -= THRUST_DAMAGE
             target.flash = PILLAR_FLASH_FRAMES
-            player.x -= player.facing[0] * THRUST_KNOCKBACK
-            player.y -= player.facing[1] * THRUST_KNOCKBACK
+            knockback_x = player.x - player.facing[0] * THRUST_KNOCKBACK
+            knockback_y = player.y - player.facing[1] * THRUST_KNOCKBACK
+            if not feet_hits_wall(zone, knockback_x, knockback_y):
+                player.x = knockback_x
+                player.y = knockback_y
         else:
-            thrust.max_reach = THRUST_REACH
+            wall_target, wall_dist = thrust_wall_target(
+                player, zone, walls, THRUST_REACH + shoulder_along
+            )
+            if wall_target is not None:
+                thrust.max_reach = max(2.0, min(THRUST_REACH, wall_dist - shoulder_along + 1.0))
+                wall_target.hp -= THRUST_DAMAGE
+                wall_target.flash = PILLAR_FLASH_FRAMES
+                knockback_x = player.x - player.facing[0] * THRUST_KNOCKBACK
+                knockback_y = player.y - player.facing[1] * THRUST_KNOCKBACK
+                if not feet_hits_wall(zone, knockback_x, knockback_y):
+                    player.x = knockback_x
+                    player.y = knockback_y
+                if wall_target.hp <= 0:
+                    tile_x = wall_target.tile_x
+                    tile_y = wall_target.tile_y
+                    row = zone.grid[tile_y]
+                    zone.grid[tile_y] = row[:tile_x] + "." + row[tile_x + 1 :]
+                    del walls[(tile_x, tile_y)]
+            else:
+                thrust.max_reach = THRUST_REACH
     for pillar in pillars:
         if pillar.flash > 0:
             pillar.flash -= 1
+    for wall in walls.values():
+        if wall.flash > 0:
+            wall.flash -= 1
 
     resolve_pillars(player, pillars)
 
@@ -161,9 +258,20 @@ def update():
     if portrait_fade > 0:
         portrait_fade -= 1
 
-    if outside_world(player.x, player.y):
-        player.x = float(PLAYER_START_X)
-        player.y = float(PLAYER_START_Y)
+    if outside_zone(zone, player.x, player.y):
+        margin = PLAYER_ZONE_MARGIN
+        player.x = max(margin, min(player.x, zone.width_px - margin))
+        player.y = max(margin, min(player.y, zone.height_px - margin))
+
+    feet_x = player.x
+    feet_y = player.y + PLAYER_FEET_OFFSET_Y
+    door_index = door_at(zone, feet_x, feet_y)
+    on_door = door_index is not None
+    if on_door and not player_on_door:
+        link = ZONE_LINKS.get((zone.name, door_index))
+        if link is not None:
+            move_to_zone(link[0], link[1], (feet_x, feet_y))
+    player_on_door = on_door
 
 
 def draw_shield(view):
@@ -183,6 +291,14 @@ def draw_shield(view):
         pyxel.pset(px, py - 1, 7)
 
 
+def shoulder_point(view):
+    if view in (Facing.LEFT, Facing.RIGHT):
+        return player.x + (3.0 if view is Facing.RIGHT else -3.0), player.y - 3.0
+    if view is Facing.UP:
+        return player.x + 1.0, player.y - 2.0
+    return player.x + 1.0, player.y + 2.0
+
+
 def draw_strike(view):
     progress = 1 - thrust.anim / THRUST_ANIM_FRAMES
     if progress < THRUST_EXTEND_POINT:
@@ -190,13 +306,7 @@ def draw_strike(view):
     else:
         strike = 1 - (progress - THRUST_EXTEND_POINT) / (1 - THRUST_EXTEND_POINT)
     reach = thrust.max_reach * strike
-    if view in (Facing.LEFT, Facing.RIGHT):
-        shoulder_x = player.x + (3.0 if view is Facing.RIGHT else -3.0)
-        shoulder_y = player.y - 3.0
-    elif view is Facing.UP:
-        shoulder_x, shoulder_y = player.x + 1.0, player.y - 2.0
-    else:
-        shoulder_x, shoulder_y = player.x + 1.0, player.y + 2.0
+    shoulder_x, shoulder_y = shoulder_point(view)
     fist_x = shoulder_x + thrust.facing[0] * reach
     fist_y = shoulder_y + thrust.facing[1] * reach
     pyxel.line(int(shoulder_x), int(shoulder_y), int(fist_x), int(fist_y), 6)
@@ -218,19 +328,45 @@ def draw_pillar(pillar):
         pyxel.blt(int(pillar.x) - 8, int(pillar.y) - 8, 2, 16 * level, 32, 16, 16, 0)
 
 
+def draw_world_tiles(cam_x, cam_y):
+    px = int(player.x)
+    py = int(player.y)
+    tile_x0 = cam_x // TILE
+    tile_y0 = cam_y // TILE
+    tile_x1 = min((cam_x + SCREEN_W) // TILE, zone.width_tiles - 1)
+    tile_y1 = min((cam_y + SCREEN_H) // TILE, zone.height_tiles - 1)
+    for tile_y in range(tile_y0, tile_y1 + 1):
+        row = zone.grid[tile_y]
+        for tile_x in range(tile_x0, tile_x1 + 1):
+            offset_x = tile_x * TILE + TILE // 2 - px
+            offset_y = tile_y * TILE + TILE // 2 - py
+            dist = (offset_x * offset_x + offset_y * offset_y) ** 0.5
+            level = pillar_tint_level(dist)
+            if level is None:
+                continue
+            kind = TILE_TYPE_INDEX[row[tile_x]]
+            src_u = level * TILE
+            src_v = TILE_TINT_V + kind * TILE
+            if kind == 2 and (tile_x, tile_y) in walls and walls[(tile_x, tile_y)].flash > 0:
+                src_u, src_v = WALL_FLASH_U, WALL_FLASH_V
+            pyxel.blt(
+                tile_x * TILE,
+                tile_y * TILE,
+                2,
+                src_u,
+                src_v,
+                TILE,
+                TILE,
+                0,
+            )
+
+
 def draw():
-    pyxel.cls(3)
+    pyxel.cls(FOG_COLOR)
+    cam_x, cam_y = camera_following_player()
+    pyxel.camera(cam_x, cam_y)
+    draw_world_tiles(cam_x, cam_y)
     view = player.view
-    pyxel.blt(
-        int(player.x) - FOG_HALF,
-        int(player.y) - FOG_HALF,
-        1,
-        0,
-        0,
-        FOG_SIZE,
-        FOG_SIZE,
-        0,
-    )
     for pillar in pillars:
         if pillar.y <= player.y:
             draw_pillar(pillar)
@@ -270,6 +406,8 @@ def draw():
     for pillar in pillars:
         if pillar.y > player.y:
             draw_pillar(pillar)
+    pyxel.camera(0, 0)
+    draw_minimap(zone, player, pillars, cam_x, cam_y)
     draw_bar(
         HUD_BAR_X,
         HEALTH_BAR_Y,
@@ -303,7 +441,14 @@ def draw():
 
 
 def run():
+    global zone, pillars, walls
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
+    pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
-    announce_progress()
+    render_tiles()
+    render_tile_tints()
+    zone = load_zone("arena")
+    player.x, player.y = zone.player_start
+    pillars = spawn_pillars(zone)
+    walls = spawn_walls(zone)
     pyxel.run(update, draw)
