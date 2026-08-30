@@ -9,15 +9,15 @@ SPRITE_ROWS = (
     ".....WGWGHG.....",
     ".....WGWHWWH....",
     "......W.HH......",
-    ".CCWBBBBBLL.....",
-    ".CCBBBBBBLLB....",
-    ".CC.BBBBLL.B....",
-    ".CC.BBBBLL.B....",
-    ".CC.BBBBLL.B....",
-    ".CC.SBBLL..S....",
-    "....BB.BB.......",
-    "....BB.BB.......",
-    "...SS...SS......",
+    ".CC.BBBBBB......",
+    ".CC.BBBBBBB.....",
+    ".CC.BBBBBBL.....",
+    ".CC.BBBBBBL.....",
+    ".CC.BBBBBBL.....",
+    ".CC.BBBBBBD.....",
+    "....BB..BB......",
+    "....BB..BB......",
+    "....SS...SS.....",
     "................",
     "................",
 )
@@ -31,8 +31,8 @@ FRONT_ROWS = (
     ".....WWWWWW.....",
     ".....WWWWWW.....",
     "...BBBBBBBBBB...",
-    "..SBBBBBBBBBBS..",
-    "..SBBBBBBBBBBS..",
+    "..DBBBBBBBBBBD..",
+    "..DBBBBBBBBBBD..",
     "....BBBBBBBB....",
     "....BGGGGGGB....",
     "....BB....BB....",
@@ -47,9 +47,9 @@ BACK_ROWS = (
     "....WWWWWWWW....",
     ".....WWWWWW.....",
     "...BBBBBBBBBB...",
-    "..SBBBBWGBBBBS..",
-    "..SBBBBGWBBBBS..",
-    "..SBBBBWGBBBBS..",
+    "...BBBBWGBBBB...",
+    "..DBBBBWGBBBBD..",
+    "..DBBBBGWBBBBD..",
     "...BBBBGWBBBB...",
     "....BBBBBBBB....",
     "....BBBBBBBB....",
@@ -57,10 +57,14 @@ BACK_ROWS = (
     "....BB....BB....",
     "...SS......SS...",
 )
+SIDE_HAND_CELLS = {(10, 10)}
 FRONT_HAND_CELLS = {(2, 9), (13, 9), (2, 10), (13, 10)}
-BACK_HAND_CELLS = {(2, 7), (13, 7), (2, 8), (13, 8), (2, 9), (13, 9)}
+BACK_HAND_CELLS = {(2, 8), (13, 8), (2, 9), (13, 9)}
 
-SPRITE_ATTACK_ROWS = tuple(row.replace("L", ".") for row in SPRITE_ROWS)
+SPRITE_ATTACK_ROWS = tuple(
+    "".join("." if (x, y) in SIDE_HAND_CELLS or ch == "L" else ch for x, ch in enumerate(row))
+    for y, row in enumerate(SPRITE_ROWS)
+)
 FRONT_ATTACK_ROWS = tuple(
     "".join("." if (x, y) in FRONT_HAND_CELLS else ch for x, ch in enumerate(row))
     for y, row in enumerate(FRONT_ROWS)
@@ -126,7 +130,10 @@ BACK_BLEND_ROWS = tuple(
     "".join("E" if (x, y) in BACK_HAND_CELLS else ch for x, ch in enumerate(row))
     for y, row in enumerate(BACK_ROWS)
 )
-SIDE_BLEND_ROWS = tuple(row.replace("L", "E") for row in SPRITE_ROWS)
+SIDE_BLEND_ROWS = tuple(
+    "".join("E" if (x, y) in SIDE_HAND_CELLS or ch == "L" else ch for x, ch in enumerate(row))
+    for y, row in enumerate(SPRITE_ROWS)
+)
 
 FRONT_FADE_ROWS = tuple(
     "".join("F" if (x, y) in FRONT_HAND_CELLS else ch for x, ch in enumerate(row))
@@ -136,7 +143,10 @@ BACK_FADE_ROWS = tuple(
     "".join("F" if (x, y) in BACK_HAND_CELLS else ch for x, ch in enumerate(row))
     for y, row in enumerate(BACK_ROWS)
 )
-SIDE_FADE_ROWS = tuple(row.replace("L", "F") for row in SPRITE_ROWS)
+SIDE_FADE_ROWS = tuple(
+    "".join("F" if (x, y) in SIDE_HAND_CELLS or ch == "L" else ch for x, ch in enumerate(row))
+    for y, row in enumerate(SPRITE_ROWS)
+)
 
 SIDE_BLEND_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in SIDE_BLEND_ROWS)
 FRONT_BLEND_CHARS = tuple("".join(SPRITE_LETTERS[ch] for ch in row) for row in FRONT_BLEND_ROWS)

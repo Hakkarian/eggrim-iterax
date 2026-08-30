@@ -29,21 +29,19 @@ from eggrim.assets.player_sprites import (
     SPRITE_CHARS,
 )
 from eggrim.assets.portraits import (
-    PORTRAIT_BACK_CHARS,
-    PORTRAIT_CHARS,
-    PORTRAIT_FRONT_CHARS,
     PORTRAIT_BLEND_POS,
+    PORTRAIT_THUMB_POS,
+    paint_portraits,
     render_portrait_blends,
+    render_thumbs,
 )
 
 
 def load_banks():
+    grids = paint_portraits()
     pyxel.images[0].set(0, 0, SPRITE_CHARS)
     pyxel.images[0].set(16, 0, FRONT_CHARS)
     pyxel.images[0].set(0, 16, BACK_CHARS)
-    pyxel.images[0].set(32, 0, PORTRAIT_CHARS)
-    pyxel.images[0].set(64, 0, PORTRAIT_FRONT_CHARS)
-    pyxel.images[0].set(96, 0, PORTRAIT_BACK_CHARS)
     pyxel.images[0].set(128, 0, PILLAR_CHARS)
     pyxel.images[0].set(0, 48, SIDE_ATTACK_CHARS)
     pyxel.images[0].set(16, 48, FRONT_ATTACK_CHARS)
@@ -61,4 +59,5 @@ def load_banks():
     pyxel.images[0].set(160, 32, FRONT_FADE_CHARS)
     pyxel.images[0].set(176, 32, BACK_FADE_CHARS)
     render_pillar_flash()
-    render_portrait_blends()
+    render_thumbs(grids)
+    render_portrait_blends(grids)
