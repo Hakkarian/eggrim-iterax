@@ -6,6 +6,8 @@ FPS = 60
 MOVE_SPEED = 40.0
 
 from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
+from eggrim.assets.floors import render_tiles
+from eggrim.assets.portraits import PORTRAIT_THUMB_POS
 from eggrim.combat import (
     THRUST_ANIM_FRAMES,
     THRUST_FIST_RADIUS,
@@ -55,7 +57,6 @@ from eggrim.zones import (
     TILE_TYPE_INDEX,
     ZONE_LINKS,
     load_zone,
-    render_tiles,
 )
 from eggrim.world import (
     PLAYER_FEET_OFFSET_Y,
@@ -277,18 +278,20 @@ def update():
 def draw_shield(view):
     px = int(player.x)
     py = int(player.y)
-    if view in (Facing.LEFT, Facing.RIGHT):
-        shield_x = px + (5 if view is Facing.RIGHT else -8)
-        pyxel.rect(shield_x, py - 5, 3, 9, 12)
-        pyxel.rectb(shield_x, py - 5, 3, 9, 0)
-        pyxel.line(shield_x + 1, py - 3, shield_x + 1, py + 2, 7)
+    if view is Facing.RIGHT:
+        shield_x, shield_y, shield_w, shield_h = px + 3, py - 3, 3, 9
+    elif view is Facing.LEFT:
+        shield_x, shield_y, shield_w, shield_h = px - 6, py - 3, 3, 9
     elif view is Facing.UP:
-        pyxel.rect(px - 2, py - 9, 4, 3, 12)
-        pyxel.rectb(px - 2, py - 9, 4, 3, 0)
+        shield_x, shield_y, shield_w, shield_h = px + 4, py - 2, 3, 7
     else:
-        pyxel.rect(px - 2, py - 3, 4, 5, 12)
-        pyxel.rectb(px - 2, py - 3, 4, 5, 0)
-        pyxel.pset(px, py - 1, 7)
+        shield_x, shield_y, shield_w, shield_h = px - 2, py, 5, 6
+    pyxel.rect(shield_x, shield_y, shield_w, shield_h, 12)
+    pyxel.rectb(shield_x, shield_y, shield_w, shield_h, 0)
+    if view is Facing.DOWN:
+        pyxel.pset(px, py + 1, 7)
+    else:
+        pyxel.line(shield_x + 1, shield_y + 2, shield_x + 1, shield_y + shield_h - 3, 7)
 
 
 def shoulder_point(view):
@@ -428,16 +431,12 @@ def draw():
     )
     if portrait_fade > 0 and portrait_from is not None:
         step = PORTRAIT_FADE_FRAMES - portrait_fade + 1
-        u, v = PORTRAIT_BLEND_POS[(portrait_from, portrait_to, step)]
-        pyxel.blt(0, 0, 0, u, v, 32, 32, 3)
+        bank, u, v = PORTRAIT_BLEND_POS[(portrait_from, portrait_to, step)]
+        pyxel.blt(0, 0, bank, u, v, 64, 64, 3)
     else:
-        if view in (Facing.LEFT, Facing.RIGHT):
-            px_src, portrait_w = 32, -32 if view is Facing.LEFT else 32
-        elif view is Facing.UP:
-            px_src, portrait_w = 96, 32
-        else:
-            px_src, portrait_w = 64, 32
-        pyxel.blt(0, 0, 0, px_src, 0, portrait_w, 32, 3)
+        thumb_u, thumb_v = PORTRAIT_THUMB_POS[portrait_key(view)]
+        portrait_w = -64 if view is Facing.LEFT else 64
+        pyxel.blt(0, 0, 0, thumb_u, thumb_v, portrait_w, 64, 3)
 
 
 def run():
