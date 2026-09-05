@@ -5,3 +5,5 @@
 # Python
 __pycache__/
 *.pyc
+# Sprite tool previews
+ei_sprites/readmey_right/_preview/
