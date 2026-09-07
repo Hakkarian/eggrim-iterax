@@ -47,6 +47,7 @@ from eggrim.hud import (
     draw_bar,
     draw_minimap,
 )
+from eggrim.items import draw_map_scarf, spawn_scarf
 from eggrim.player import (
     BLOCK_DRAIN,
     BLOCK_MIN_START,
@@ -91,6 +92,7 @@ thrust = ThrustState()
 
 zone = None
 player_on_door = False
+scarf = None
 
 
 def door_at(zone, feet_x, feet_y):
@@ -371,6 +373,7 @@ def draw():
     for pillar in pillars:
         if pillar.y <= player.y:
             draw_pillar(pillar)
+    draw_map_scarf(scarf)
     if thrust.anim > 0:
         state, frame_index = "attack", min(
             3, int((1 - thrust.anim / THRUST_ANIM_FRAMES) * 4)
@@ -479,7 +482,7 @@ def draw():
 
 
 def run():
-    global zone, pillars, walls
+    global zone, pillars, walls, scarf
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
@@ -489,4 +492,5 @@ def run():
     player.x, player.y = zone.player_start
     pillars = spawn_pillars(zone)
     walls = spawn_walls(zone)
+    scarf = spawn_scarf(zone, player.x, player.y)
     pyxel.run(update, draw)
