@@ -5,7 +5,13 @@ SCREEN_H = 144
 FPS = 60
 MOVE_SPEED = 40.0
 
-from eggrim.assets import ICON_CHARS, ICON_COLKEY, PORTRAIT_BLEND_POS, load_banks
+from eggrim.assets import (
+    ICON_CHARS,
+    ICON_COLKEY,
+    PORTRAIT_BLEND_POS,
+    load_banks,
+)
+from eggrim.assets.factory import hero_frame
 from eggrim.assets.floors import render_tiles
 from eggrim.assets.portraits import PORTRAIT_THUMB_POS
 from eggrim.combat import (
@@ -159,15 +165,17 @@ def update():
         player.stamina >= BLOCK_MIN_START or (player.blocking and player.stamina > 0)
     ):
         player.blocking = True
+        player.block_anim += 1
         player.sprinting = False
         drained = True
         player.stamina = max(0.0, player.stamina - BLOCK_DRAIN / FPS)
     else:
         player.blocking = False
+        player.block_anim = 0
     speed = MOVE_SPEED
-    if not (dx or dy):
+    if not (dx or dy) or player.blocking:
         player.walk_phase = 0
-    if dx or dy:
+    if (dx or dy) and not player.blocking:
         length = (dx * dx + dy * dy) ** 0.5
         player.facing = (dx / length, dy / length)
         player.walk_phase += 2 if player.sprinting else 1
@@ -197,13 +205,14 @@ def update():
     if thrust.anim > 0:
         thrust.anim -= 1
     if (
-        pyxel.btn(pyxel.MOUSE_BUTTON_LEFT)
+        pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT)
         and thrust.cooldown == 0
         and not player.blocking
     ):
         thrust.cooldown = THRUST_COOLDOWN_FRAMES
         thrust.anim = THRUST_ANIM_FRAMES
         thrust.facing = player.facing
+        thrust.hit = False
         shoulder_x, shoulder_y = shoulder_point(player.view)
         shoulder_along = (
             (shoulder_x - player.x) * player.facing[0]
@@ -213,6 +222,7 @@ def update():
             player, pillars, THRUST_REACH + shoulder_along
         )
         if target is not None:
+            thrust.hit = True
             thrust.max_reach = max(2.0, min(THRUST_REACH, target_contact - shoulder_along + 1.0))
             target.hp -= THRUST_DAMAGE
             target.flash = PILLAR_FLASH_FRAMES
@@ -226,6 +236,7 @@ def update():
                 player, zone, walls, THRUST_REACH + shoulder_along
             )
             if wall_target is not None:
+                thrust.hit = True
                 thrust.max_reach = max(2.0, min(THRUST_REACH, wall_dist - shoulder_along + 1.0))
                 wall_target.hp -= THRUST_DAMAGE
                 wall_target.flash = PILLAR_FLASH_FRAMES
@@ -275,31 +286,14 @@ def update():
     player_on_door = on_door
 
 
-def draw_shield(view):
-    px = int(player.x)
-    py = int(player.y)
-    if view is Facing.RIGHT:
-        shield_x, shield_y, shield_w, shield_h = px + 3, py - 3, 3, 9
-    elif view is Facing.LEFT:
-        shield_x, shield_y, shield_w, shield_h = px - 6, py - 3, 3, 9
-    elif view is Facing.UP:
-        shield_x, shield_y, shield_w, shield_h = px + 4, py - 2, 3, 7
-    else:
-        shield_x, shield_y, shield_w, shield_h = px - 2, py, 5, 6
-    pyxel.rect(shield_x, shield_y, shield_w, shield_h, 12)
-    pyxel.rectb(shield_x, shield_y, shield_w, shield_h, 0)
-    if view is Facing.DOWN:
-        pyxel.pset(px, py + 1, 7)
-    else:
-        pyxel.line(shield_x + 1, shield_y + 2, shield_x + 1, shield_y + shield_h - 3, 7)
-
-
 def shoulder_point(view):
-    if view in (Facing.LEFT, Facing.RIGHT):
-        return player.x + (3.0 if view is Facing.RIGHT else -3.0), player.y - 3.0
+    if view is Facing.RIGHT:
+        return player.x + 5.0, player.y - 19.0
+    if view is Facing.LEFT:
+        return player.x - 5.0, player.y - 19.0
     if view is Facing.UP:
-        return player.x + 1.0, player.y - 2.0
-    return player.x + 1.0, player.y + 2.0
+        return player.x + 1.0, player.y - 36.0
+    return player.x + 1.0, player.y + 6.0
 
 
 def draw_strike(view):
@@ -312,6 +306,10 @@ def draw_strike(view):
     shoulder_x, shoulder_y = shoulder_point(view)
     fist_x = shoulder_x + thrust.facing[0] * reach
     fist_y = shoulder_y + thrust.facing[1] * reach
+    if view in (Facing.UP, Facing.DOWN):
+        if thrust.hit:
+            pyxel.rect(int(fist_x) - 1, int(fist_y) - 1, 2, 2, 7)
+        return
     pyxel.line(int(shoulder_x), int(shoulder_y), int(fist_x), int(fist_y), 6)
     if abs(thrust.facing[0]) >= abs(thrust.facing[1]):
         pyxel.line(int(shoulder_x), int(shoulder_y) + 1, int(fist_x), int(fist_y) + 1, 6)
@@ -373,39 +371,80 @@ def draw():
     for pillar in pillars:
         if pillar.y <= player.y:
             draw_pillar(pillar)
-    sprite_x = int(player.x) - 8
-    sprite_y = int(player.y) - 8
+    if thrust.anim > 0:
+        state, frame_index = "attack", min(
+            3, int((1 - thrust.anim / THRUST_ANIM_FRAMES) * 4)
+        )
+    elif player.blocking:
+        state, frame_index = "defensive", min(2, player.block_anim // 8)
+    elif pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
+        state, frame_index = "attack", 3
+    elif player.walk_phase:
+        state, frame_index = "run", (player.walk_phase % 16) // 4
+    else:
+        state, frame_index = "idle", 0
     attacking = thrust.anim > 0
-    walk_frame = (0, 1, 2, 1)[player.walk_phase % 20 // 5]
-    if not attacking and player.sprinting and walk_frame == 1:
-        sprite_y -= 1
-    if attacking:
-        if thrust.anim == THRUST_ANIM_FRAMES or thrust.anim == 1:
-            pose = 3
-        elif thrust.anim == THRUST_ANIM_FRAMES - 1 or thrust.anim == 2:
-            pose = 4
+    bob = 1 if not attacking and player.sprinting and state == "run" and frame_index == 1 else 0
+    if view is Facing.UP:
+        direction = "back"
+    elif view is Facing.DOWN:
+        direction = "front"
+    elif view is Facing.RIGHT:
+        direction = "right"
+    else:
+        direction = "left"
+    frame = hero_frame(state, direction, frame_index)
+    if frame is not None:
+        bank, u, v, w, h = frame
+        pyxel.blt(
+            int(player.x) - w // 2,
+            int(player.y) + 8 - h - bob,
+            bank,
+            u,
+            v,
+            w,
+            h,
+            0,
+        )
+    elif view in (Facing.LEFT, Facing.RIGHT):
+        walk_frame = (0, 1, 2, 1)[player.walk_phase % 20 // 5]
+        if attacking:
+            if thrust.anim == THRUST_ANIM_FRAMES or thrust.anim == 1:
+                pose = 3
+            elif thrust.anim == THRUST_ANIM_FRAMES - 1 or thrust.anim == 2:
+                pose = 4
+            else:
+                pose = 5
         else:
-            pose = 5
-    else:
-        pose = walk_frame
-    if view in (Facing.LEFT, Facing.RIGHT):
+            pose = walk_frame
         frames = ((0, 0), (48, 32), (0, 32), (96, 32), (144, 32), (0, 48))
-    elif view is Facing.UP:
-        frames = ((0, 16), (80, 32), (32, 32), (128, 32), (176, 32), (32, 48))
-    else:
-        frames = ((16, 0), (64, 32), (16, 32), (112, 32), (160, 32), (16, 48))
-    sprite_u, sprite_v = frames[pose]
-    if attacking and view is Facing.UP:
-        draw_strike(view)
-    if view in (Facing.LEFT, Facing.RIGHT):
+        sprite_u, sprite_v = frames[pose]
         sprite_w = -16 if view is Facing.LEFT else 16
-        pyxel.blt(sprite_x, sprite_y, 0, sprite_u, sprite_v, sprite_w, 16, 0)
+        pyxel.blt(
+            int(player.x) - 8,
+            int(player.y) - 8 - bob,
+            0,
+            sprite_u,
+            sprite_v,
+            sprite_w,
+            16,
+            0,
+        )
     else:
-        pyxel.blt(sprite_x, sprite_y, 0, sprite_u, sprite_v, 16, 16, 0)
-    if attacking and view is not Facing.UP:
+        front = direction == "front"
+        sprite_u, sprite_v = (16, 0) if front else (0, 16)
+        pyxel.blt(
+            int(player.x) - 8,
+            int(player.y) - 8 - bob,
+            0,
+            sprite_u,
+            sprite_v,
+            16,
+            16,
+            0,
+        )
+    if attacking:
         draw_strike(view)
-    if player.blocking:
-        draw_shield(view)
     for pillar in pillars:
         if pillar.y > player.y:
             draw_pillar(pillar)
@@ -432,11 +471,11 @@ def draw():
     if portrait_fade > 0 and portrait_from is not None:
         step = PORTRAIT_FADE_FRAMES - portrait_fade + 1
         bank, u, v = PORTRAIT_BLEND_POS[(portrait_from, portrait_to, step)]
-        pyxel.blt(0, 0, bank, u, v, 64, 64, 3)
+        pyxel.blt(0, 0, bank, u, v, 64, 64, 15)
     else:
         thumb_u, thumb_v = PORTRAIT_THUMB_POS[portrait_key(view)]
         portrait_w = -64 if view is Facing.LEFT else 64
-        pyxel.blt(0, 0, 0, thumb_u, thumb_v, portrait_w, 64, 3)
+        pyxel.blt(0, 0, 0, thumb_u, thumb_v, portrait_w, 64, 15)
 
 
 def run():
