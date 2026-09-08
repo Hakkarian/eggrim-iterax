@@ -8,6 +8,7 @@ SCARF_PULSE_FRAMES = 20
 SCARF_BODY_COLOR = 4
 SCARF_FOLD_COLOR = 5
 SCARF_GLOW_COLOR = 9
+SCARF_PICKUP_RADIUS = 20.0
 
 
 class Scarf:
@@ -15,6 +16,13 @@ class Scarf:
         self.x = x
         self.y = y
         self.on_map = True
+
+
+def draw_scarf_sprite(x, y):
+    pyxel.rect(x - 4, y - 2, 8, 3, SCARF_BODY_COLOR)
+    pyxel.rect(x - 4, y - 2, 8, 1, SCARF_FOLD_COLOR)
+    pyxel.rect(x + 2, y + 1, 2, 3, SCARF_BODY_COLOR)
+    pyxel.pset(x + 3, y + 4, SCARF_FOLD_COLOR)
 
 
 def open_tile(zone, tile_x, tile_y):
@@ -48,4 +56,4 @@ def draw_map_scarf(scarf):
     pyxel.rect(x - 4, y - 2, 8, 3, SCARF_BODY_COLOR)
     pyxel.rect(x - 4, y - 2, 8, 1, SCARF_FOLD_COLOR)
     pyxel.rect(x + 2, y + 1, 2, 3, SCARF_BODY_COLOR)
-    pyxel.pix(x + 3, y + 4, SCARF_FOLD_COLOR)
+    pyxel.pset(x + 3, y + 4, SCARF_FOLD_COLOR)

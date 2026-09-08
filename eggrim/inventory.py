@@ -1,5 +1,7 @@
 import pyxel
 
+from eggrim.items import draw_scarf_sprite
+
 SCREEN_W = 256
 SCREEN_H = 144
 MODAL_W = 154
@@ -21,6 +23,20 @@ SILHOUETTE_COLOR = 3
 
 _dither_map = None
 _opened = False
+_items = []
+
+
+def add_item(name):
+    _items.append(name)
+
+
+def has_item(name):
+    return name in _items
+
+
+def remove_item(name):
+    if name in _items:
+        _items.remove(name)
 
 
 def render_backdrop():
@@ -66,16 +82,31 @@ def draw_tpose_placeholder():
     pyxel.line(center_x + 4, top + 37, center_x + 4, top + 56, SILHOUETTE_COLOR)
 
 
-def draw_grid():
+def grid_origin():
     grid_w = GRID_COLS * CELL_SIZE + (GRID_COLS - 1) * CELL_GAP
     grid_h = GRID_ROWS * CELL_SIZE + (GRID_ROWS - 1) * CELL_GAP
     x0 = MODAL_X + HALF_W + (MODAL_W - HALF_W - grid_w) // 2
     y0 = MODAL_Y + (MODAL_H - grid_h) // 2
-    for row in range(GRID_ROWS):
-        for col in range(GRID_COLS):
-            cell_x = x0 + col * (CELL_SIZE + CELL_GAP)
-            cell_y = y0 + row * (CELL_SIZE + CELL_GAP)
-            pyxel.rectb(cell_x, cell_y, CELL_SIZE, CELL_SIZE, BORDER_COLOR)
+    return x0, y0
+
+
+def cell_top_left(index):
+    x0, y0 = grid_origin()
+    col = index % GRID_COLS
+    row = index // GRID_COLS
+    return x0 + col * (CELL_SIZE + CELL_GAP), y0 + row * (CELL_SIZE + CELL_GAP)
+
+
+def draw_grid():
+    for index in range(GRID_COLS * GRID_ROWS):
+        cell_x, cell_y = cell_top_left(index)
+        pyxel.rectb(cell_x, cell_y, CELL_SIZE, CELL_SIZE, BORDER_COLOR)
+        if index >= len(_items):
+            continue
+        icon_cx = cell_x + CELL_SIZE // 2
+        icon_cy = cell_y + CELL_SIZE // 2
+        if _items[index] == "scarf":
+            draw_scarf_sprite(icon_cx, icon_cy)
 
 
 def draw():

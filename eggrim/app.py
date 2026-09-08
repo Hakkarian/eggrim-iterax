@@ -47,7 +47,11 @@ from eggrim.hud import (
     draw_bar,
     draw_minimap,
 )
-from eggrim.items import draw_map_scarf, spawn_scarf
+from eggrim.items import (
+    SCARF_PICKUP_RADIUS,
+    draw_map_scarf,
+    spawn_scarf,
+)
 from eggrim import inventory
 from eggrim.player import (
     BLOCK_DRAIN,
@@ -161,6 +165,8 @@ def update():
         inventory.close()
     if inventory.is_open():
         return
+    if pyxel.btnp(pyxel.KEY_E):
+        handle_scarf_hand()
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -297,6 +303,24 @@ def update():
         if link is not None:
             move_to_zone(link[0], link[1], (feet_x, feet_y))
     player_on_door = on_door
+
+
+def handle_scarf_hand():
+    global scarf
+    if scarf is None:
+        return
+    feet_x = player.x
+    feet_y = player.y + PLAYER_FEET_OFFSET_Y
+    if scarf.on_map:
+        dist = ((scarf.x - feet_x) ** 2 + (scarf.y - feet_y) ** 2) ** 0.5
+        if dist <= SCARF_PICKUP_RADIUS:
+            scarf.on_map = False
+            inventory.add_item("scarf")
+    elif inventory.has_item("scarf"):
+        scarf.x = feet_x
+        scarf.y = feet_y + 1.0
+        scarf.on_map = True
+        inventory.remove_item("scarf")
 
 
 def shoulder_point(view):
