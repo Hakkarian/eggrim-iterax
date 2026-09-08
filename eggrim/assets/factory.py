@@ -6,6 +6,7 @@ import pyxel
 from PIL import Image
 
 HERO_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_locked")
+TPOSE_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_tpose")
 HERO_STATES = {"idle": 4, "run": 4, "attack": 4, "defensive": 3}
 HERO_DIRECTIONS = ("right", "left", "front", "back")
 BANK_PX = 256
@@ -36,6 +37,7 @@ USED_RECTS = {
 }
 
 hero_frames = {}
+tpose_frames = {}
 hero_palette = ()
 palette_chars = {}
 
@@ -185,6 +187,43 @@ def load_hero_asset():
         f"factory: hero {loaded}/{len(wanted)} frames ({per_state}),"
         f" palette {len(hero_palette)} slots, {total_mismatches} off-palette px"
     )
+
+
+def load_tpose_asset():
+    global tpose_frames
+    tpose_frames = {}
+    if not palette_chars:
+        return
+    path = os.path.join(TPOSE_DIR, "tpose_front_0.png")
+    if not os.path.isfile(path):
+        print("factory: tpose frame missing, inventory falls back to front idle")
+        return
+    img = Image.open(path).convert("RGBA")
+    w, h = img.size
+    masks = {bank: free_mask(bank) for bank in (0, 1, 2)}
+    for bank, x, y, fw, fh in hero_frames.values():
+        win = (1 << fw) - 1
+        for yy in range(y, y + fh):
+            masks[bank][yy] &= ~(win << x)
+    slot = None
+    for bank in (0, 1, 2):
+        slot = find_slot(masks[bank], w, h)
+        if slot is not None:
+            break
+    if slot is None:
+        print("factory: tpose frame does not fit, inventory falls back to front idle")
+        return
+    rows, mismatches = frame_rows(img)
+    pyxel.images[bank].set(slot[0], slot[1], rows)
+    tpose_frames["front"] = (bank, slot[0], slot[1], w, h)
+    print(
+        f"factory: tpose frame placed bank {bank} at ({slot[0]},{slot[1]}),"
+        f" {mismatches} off-palette px"
+    )
+
+
+def tpose_frame(direction):
+    return tpose_frames.get(direction)
 
 
 def hero_frame(state, direction, index):

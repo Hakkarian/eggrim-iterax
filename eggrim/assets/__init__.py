@@ -1,6 +1,6 @@
 import pyxel
 
-from eggrim.assets.factory import load_hero_asset, read_palette
+from eggrim.assets.factory import load_hero_asset, load_tpose_asset, read_palette
 from eggrim.assets.floors import render_tiles
 from eggrim.assets.icon import ICON_CHARS, ICON_COLKEY
 from eggrim.assets.pillar import (
@@ -63,3 +63,4 @@ def load_banks():
     render_portrait_blends()
     if palette_ready:
         load_hero_asset()
+        load_tpose_asset()

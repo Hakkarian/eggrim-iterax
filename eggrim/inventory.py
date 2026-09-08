@@ -1,5 +1,6 @@
 import pyxel
 
+from eggrim.assets.factory import hero_frame, tpose_frame
 from eggrim.items import draw_scarf_sprite
 
 SCREEN_W = 256
@@ -19,7 +20,6 @@ DITHER_TILE_V = 248
 BACKDROP_COLOR = 6
 PANEL_COLOR = 2
 BORDER_COLOR = 3
-SILHOUETTE_COLOR = 3
 
 _dither_map = None
 _opened = False
@@ -68,18 +68,81 @@ def is_open():
 
 
 TPOSE_HEIGHT = 56
+OUTLINE_COLOR = 1
+UNIFORM_MAIN_COLOR = 4
+UNIFORM_SHADOW_COLOR = 3
+UNIFORM_DARK_COLOR = 6
+SKIN_COLOR = 11
+SKIN_SHADOW_COLOR = 10
+HAIR_COLOR = 12
+HAIR_HIGHLIGHT_COLOR = 13
+TRIM_COLOR = 9
 
 
-def draw_tpose_placeholder():
-    center_x = MODAL_X + HALF_W // 2
-    top = MODAL_Y + (MODAL_H - TPOSE_HEIGHT) // 2
-    pyxel.circ(center_x, top + 6, 5, SILHOUETTE_COLOR)
-    pyxel.line(center_x - 16, top + 20, center_x + 16, top + 20, SILHOUETTE_COLOR)
-    pyxel.line(center_x - 16, top + 20, center_x - 16, top + 16, SILHOUETTE_COLOR)
-    pyxel.line(center_x + 16, top + 20, center_x + 16, top + 16, SILHOUETTE_COLOR)
-    pyxel.rect(center_x - 6, top + 13, 12, 24, SILHOUETTE_COLOR)
-    pyxel.line(center_x - 4, top + 37, center_x - 4, top + 56, SILHOUETTE_COLOR)
-    pyxel.line(center_x + 4, top + 37, center_x + 4, top + 56, SILHOUETTE_COLOR)
+def draw_tpose_hero():
+    cx = MODAL_X + HALF_W // 2
+    t = MODAL_Y + (MODAL_H - TPOSE_HEIGHT) // 2
+    frame = tpose_frame("front") or hero_frame("idle", "front", 0)
+    if frame is not None:
+        bank, u, v, w, h = frame
+        pyxel.blt(cx - w // 2, t + (TPOSE_HEIGHT - h) // 2, bank, u, v, w, h, 0)
+        return
+    pyxel.rect(cx - 2, t + 10, 4, 4, SKIN_SHADOW_COLOR)
+    pyxel.rect(cx - 10, t + 12, 20, 6, OUTLINE_COLOR)
+    pyxel.rect(cx - 9, t + 13, 18, 4, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx - 9, t + 16, cx + 8, t + 16, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx - 32, t + 12, 6, 7, OUTLINE_COLOR)
+    pyxel.rect(cx - 31, t + 13, 4, 5, SKIN_COLOR)
+    pyxel.rect(cx + 26, t + 12, 6, 7, OUTLINE_COLOR)
+    pyxel.rect(cx + 27, t + 13, 4, 5, SKIN_COLOR)
+    pyxel.rect(cx - 31, t + 12, 22, 6, OUTLINE_COLOR)
+    pyxel.rect(cx - 30, t + 13, 20, 4, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx - 30, t + 13, cx - 11, t + 13, TRIM_COLOR)
+    pyxel.line(cx - 30, t + 16, cx - 11, t + 16, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx + 9, t + 12, 22, 6, OUTLINE_COLOR)
+    pyxel.rect(cx + 10, t + 13, 20, 4, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx + 11, t + 13, cx + 30, t + 13, TRIM_COLOR)
+    pyxel.line(cx + 11, t + 16, cx + 30, t + 16, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx - 10, t + 16, 20, 16, OUTLINE_COLOR)
+    pyxel.rect(cx - 9, t + 17, 18, 14, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx - 8, t + 21, cx - 3, t + 21, UNIFORM_SHADOW_COLOR)
+    pyxel.line(cx + 3, t + 21, cx + 8, t + 21, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx - 10, t + 16, 4, 2, TRIM_COLOR)
+    pyxel.rect(cx + 6, t + 16, 4, 2, TRIM_COLOR)
+    pyxel.line(cx - 4, t + 16, cx, t + 19, TRIM_COLOR)
+    pyxel.line(cx + 4, t + 16, cx, t + 19, TRIM_COLOR)
+    pyxel.line(cx, t + 19, cx, t + 31, UNIFORM_SHADOW_COLOR)
+    pyxel.pset(cx, t + 20, HAIR_HIGHLIGHT_COLOR)
+    pyxel.pset(cx, t + 23, TRIM_COLOR)
+    pyxel.pset(cx - 1, t + 24, TRIM_COLOR)
+    pyxel.pset(cx + 1, t + 24, TRIM_COLOR)
+    pyxel.pset(cx, t + 25, TRIM_COLOR)
+    pyxel.rect(cx - 8, t + 31, 16, 3, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx - 2, t + 31, 4, 3, TRIM_COLOR)
+    pyxel.rect(cx - 8, t + 34, 16, 2, UNIFORM_MAIN_COLOR)
+    pyxel.rect(cx - 8, t + 36, 7, 14, OUTLINE_COLOR)
+    pyxel.rect(cx - 7, t + 36, 5, 13, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx - 4, t + 38, cx - 4, t + 48, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx + 1, t + 36, 7, 14, OUTLINE_COLOR)
+    pyxel.rect(cx + 2, t + 36, 5, 13, UNIFORM_MAIN_COLOR)
+    pyxel.line(cx + 5, t + 38, cx + 5, t + 48, UNIFORM_SHADOW_COLOR)
+    pyxel.rect(cx - 9, t + 49, 8, 6, OUTLINE_COLOR)
+    pyxel.rect(cx - 8, t + 50, 6, 4, UNIFORM_DARK_COLOR)
+    pyxel.rect(cx + 1, t + 49, 8, 6, OUTLINE_COLOR)
+    pyxel.rect(cx + 2, t + 50, 6, 4, UNIFORM_DARK_COLOR)
+    pyxel.line(cx - 8, t + 50, cx - 3, t + 50, TRIM_COLOR)
+    pyxel.line(cx + 2, t + 50, cx + 7, t + 50, TRIM_COLOR)
+    pyxel.circ(cx, t + 6, 5, SKIN_COLOR)
+    pyxel.circb(cx, t + 6, 5, OUTLINE_COLOR)
+    pyxel.rect(cx - 4, t + 1, 9, 3, HAIR_COLOR)
+    pyxel.pset(cx - 5, t + 4, HAIR_COLOR)
+    pyxel.pset(cx + 4, t + 4, HAIR_COLOR)
+    pyxel.pset(cx + 1, t + 2, HAIR_HIGHLIGHT_COLOR)
+    pyxel.pset(cx + 2, t + 3, HAIR_HIGHLIGHT_COLOR)
+    pyxel.pset(cx - 2, t + 7, OUTLINE_COLOR)
+    pyxel.pset(cx + 2, t + 7, OUTLINE_COLOR)
+    pyxel.pset(cx - 3, t + 6, SKIN_SHADOW_COLOR)
+    pyxel.pset(cx + 3, t + 6, SKIN_SHADOW_COLOR)
 
 
 def grid_origin():
@@ -117,5 +180,5 @@ def draw():
     pyxel.line(
         divider_x, MODAL_Y + 1, divider_x, MODAL_Y + MODAL_H - 2, BORDER_COLOR
     )
-    draw_tpose_placeholder()
+    draw_tpose_hero()
     draw_grid()
