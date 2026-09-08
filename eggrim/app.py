@@ -157,11 +157,14 @@ def portrait_key(view):
 def update():
     global portrait_to, portrait_from, portrait_fade, walls, player_on_door
     global fullscreen_on
-    if pyxel.btnp(pyxel.KEY_RETURN) and pyxel.btn(pyxel.KEY_ALT):
+    if pyxel.btnp(pyxel.KEY_RETURN) and pyxel.btn(pyxel.KEY_ALT) or pyxel.btnp(
+        pyxel.KEY_ESCAPE
+    ):
         fullscreen_on = not fullscreen_on
+        pyxel.fullscreen(fullscreen_on)
     if pyxel.btnp(pyxel.KEY_I):
         inventory.toggle()
-    if pyxel.btnp(pyxel.KEY_ESCAPE) or not fullscreen_on:
+    if not fullscreen_on:
         inventory.close()
     if inventory.is_open():
         return
@@ -520,7 +523,14 @@ def draw():
 
 def run():
     global zone, pillars, walls, scarf
-    pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
+    pyxel.init(
+        SCREEN_W,
+        SCREEN_H,
+        title="Eggrim's Iterax",
+        display_scale=5,
+        fps=FPS,
+        quit_key=pyxel.KEY_NONE,
+    )
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
     inventory.render_backdrop()
