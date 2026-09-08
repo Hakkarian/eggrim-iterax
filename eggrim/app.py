@@ -48,6 +48,7 @@ from eggrim.hud import (
     draw_minimap,
 )
 from eggrim.items import draw_map_scarf, spawn_scarf
+from eggrim import inventory
 from eggrim.player import (
     BLOCK_DRAIN,
     BLOCK_MIN_START,
@@ -93,6 +94,7 @@ thrust = ThrustState()
 zone = None
 player_on_door = False
 scarf = None
+fullscreen_on = True
 
 
 def door_at(zone, feet_x, feet_y):
@@ -150,6 +152,15 @@ def portrait_key(view):
 
 def update():
     global portrait_to, portrait_from, portrait_fade, walls, player_on_door
+    global fullscreen_on
+    if pyxel.btnp(pyxel.KEY_RETURN) and pyxel.btn(pyxel.KEY_ALT):
+        fullscreen_on = not fullscreen_on
+    if pyxel.btnp(pyxel.KEY_I):
+        inventory.toggle()
+    if pyxel.btnp(pyxel.KEY_ESCAPE) or not fullscreen_on:
+        inventory.close()
+    if inventory.is_open():
+        return
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -479,6 +490,8 @@ def draw():
         thumb_u, thumb_v = PORTRAIT_THUMB_POS[portrait_key(view)]
         portrait_w = -64 if view is Facing.LEFT else 64
         pyxel.blt(0, 0, 0, thumb_u, thumb_v, portrait_w, 64, 15)
+    if inventory.is_open():
+        inventory.draw()
 
 
 def run():
@@ -486,6 +499,7 @@ def run():
     pyxel.init(SCREEN_W, SCREEN_H, title="Eggrim's Iterax", display_scale=5, fps=FPS)
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
+    inventory.render_backdrop()
     render_tiles()
     render_tile_tints()
     zone = load_zone("arena")
