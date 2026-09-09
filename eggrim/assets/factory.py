@@ -7,16 +7,16 @@ from PIL import Image
 
 HERO_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_locked")
 TPOSE_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_tpose")
-HERO_STATES = {"idle": 4, "run": 4, "attack": 4, "defensive": 3}
+HERO_STATES = {"idle": 4, "run": 4, "attack": 4, "defensive": 3, "dash": 8}
+ENEMY_STATES = {"idle": 3, "attack": 4, "run": 4}
 HERO_DIRECTIONS = ("right", "left", "front", "back")
+STATE_DIRECTIONS = {"dash": ("left",)}
 SCARF_DIRECTIONS = ("right", "front", "back")
 BANK_PX = 256
 CHARS = "0123456789abcdef"
 
 USED_RECTS = {
     0: (
-        (0, 0, 192, 64),
-        (0, 64, 192, 64),
         (0, 128, 24, 8),
         (0, 136, 128, 64),
         (248, 248, 8, 8),
@@ -37,11 +37,14 @@ USED_RECTS = {
     ),
 }
 
+LEGACY_RECTS = {0: ((0, 0, 192, 64), (0, 64, 192, 64))}
+
 hero_frames = {}
 tpose_frames = {}
 plain_rows = {}
 scarf_rows = {}
 scarf_worn = False
+legacy_fallback_live = True
 hero_palette = ()
 palette_chars = {}
 
@@ -67,13 +70,20 @@ def read_palette():
     return True
 
 
-def free_mask(bank):
+def reserve_rect(mask, x, y, w, h):
+    win = (1 << w) - 1
+    for py in range(y, y + h):
+        mask[py] &= ~(win << x)
+
+
+def free_mask(bank, keep_legacy=True):
     full = (1 << BANK_PX) - 1
     mask = [full] * BANK_PX
     for x, y, w, h in USED_RECTS[bank]:
-        win = (1 << w) - 1
-        for py in range(y, y + h):
-            mask[py] &= ~(win << x)
+        reserve_rect(mask, x, y, w, h)
+    if keep_legacy:
+        for x, y, w, h in LEGACY_RECTS.get(bank, ()):
+            reserve_rect(mask, x, y, w, h)
     return mask
 
 
@@ -117,25 +127,33 @@ def frame_rows(img):
 
 
 def load_hero_asset():
-    global hero_frames
+    global hero_frames, legacy_fallback_live
     if not palette_chars:
         print("factory: palette not installed, hero stays procedural")
         return
-    masks = {bank: free_mask(bank) for bank in (0, 1, 2)}
+    masks = {bank: free_mask(bank, keep_legacy=False) for bank in (0, 1, 2)}
     free_px = sum(
         bin(row).count("1") for mask in masks.values() for row in mask
     )
     wanted = []
     for state, count in HERO_STATES.items():
-        for direction in HERO_DIRECTIONS:
+        for direction in hero_directions(state):
             for index in range(count):
                 wanted.append((state, direction, index))
+    for state, count in ENEMY_STATES.items():
+        for index in range(count):
+            wanted.append(("enemy", state, index))
     images = {}
     missing = []
     for state, direction, index in wanted:
-        path = os.path.join(HERO_DIR, f"{state}_{direction}_{index}.png")
+        if state == "enemy":
+            path = os.path.join(HERO_DIR, f"{direction}_front_scarf_{index}.png")
+            name = f"enemy_{direction}_{index}"
+        else:
+            path = os.path.join(HERO_DIR, f"{state}_{direction}_{index}.png")
+            name = f"{state}_{direction}_{index}"
         if not os.path.isfile(path):
-            missing.append(f"{state}_{direction}_{index}")
+            missing.append(name)
             continue
         images[(state, direction, index)] = Image.open(path).convert("RGBA")
     needed_px = sum(img.size[0] * img.size[1] for img in images.values())
@@ -148,31 +166,46 @@ def load_hero_asset():
     if missing:
         print(f"factory: missing hero frames: {', '.join(missing)}")
     area_order = sorted(images, key=lambda key: -images[key].size[0] * images[key].size[1])
-    placed = {}
-    total_mismatches = 0
     orders = [area_order] + [
         random.Random(seed).sample(area_order, len(area_order)) for seed in range(8)
     ]
-    for order in orders:
-        masks = {bank: free_mask(bank) for bank in (0, 1, 2)}
-        placed = {}
-        total_mismatches = 0
-        unplaced = []
-        for key in order:
-            img = images[key]
-            w, h = img.size
-            for bank in (0, 1, 2):
-                slot = find_slot(masks[bank], w, h)
-                if slot is not None:
-                    break
-            if slot is None:
-                unplaced.append(key)
-                continue
-            placed[key] = (bank, slot[0], slot[1], w, h)
-            rows, mismatches = frame_rows(img)
-            total_mismatches += mismatches
-        if not unplaced:
-            break
+
+    def pack(keep_legacy):
+        for order in orders:
+            masks = {
+                bank: free_mask(bank, keep_legacy=keep_legacy)
+                for bank in (0, 1, 2)
+            }
+            placed = {}
+            total_mismatches = 0
+            unplaced = []
+            for key in order:
+                img = images[key]
+                w, h = img.size
+                for bank in (0, 1, 2):
+                    slot = find_slot(masks[bank], w, h)
+                    if slot is not None:
+                        break
+                if slot is None:
+                    unplaced.append(key)
+                    continue
+                placed[key] = (bank, slot[0], slot[1], w, h)
+                rows, mismatches = frame_rows(img)
+                total_mismatches += mismatches
+            if not unplaced:
+                break
+        return placed, total_mismatches, unplaced
+
+    placed, total_mismatches, unplaced = pack(True)
+    released_legacy = False
+    if unplaced and not missing:
+        candidate = pack(False)
+        if not candidate[2]:
+            placed, total_mismatches, unplaced = candidate
+            released_legacy = True
+    legacy_fallback_live = not released_legacy
+    if released_legacy:
+        print("factory: legacy hero sprites released for drawn frames")
     for key, (bank, x, y, w, h) in placed.items():
         rows, _ = frame_rows(images[key])
         pyxel.images[bank].set(x, y, rows)
@@ -205,7 +238,10 @@ def load_tpose_asset():
         return
     img = Image.open(path).convert("RGBA")
     w, h = img.size
-    masks = {bank: free_mask(bank) for bank in (0, 1, 2)}
+    masks = {
+        bank: free_mask(bank, keep_legacy=legacy_fallback_live)
+        for bank in (0, 1, 2)
+    }
     for bank, x, y, fw, fh in hero_frames.values():
         win = (1 << fw) - 1
         for yy in range(y, y + fh):
@@ -231,10 +267,14 @@ def tpose_frame(direction):
     return tpose_frames.get(direction)
 
 
+def hero_directions(state):
+    return STATE_DIRECTIONS.get(state, HERO_DIRECTIONS)
+
+
 def scarf_directions(state):
     if state in ("idle", "run", "defensive"):
         return HERO_DIRECTIONS
-    return SCARF_DIRECTIONS
+    return STATE_DIRECTIONS.get(state, SCARF_DIRECTIONS)
 
 
 def scarf_behind_rows(plain, twin):
@@ -252,7 +292,7 @@ def load_scarf_asset():
     wanted = [
         (state, direction, index)
         for state in HERO_STATES
-        for direction in scarf_directions(state)
+        for direction in hero_directions(state)
         for index in range(HERO_STATES[state])
     ]
     for key in wanted:
@@ -309,3 +349,11 @@ def set_scarf_worn(worn):
 
 def hero_frame(state, direction, index):
     return hero_frames.get((state, direction, index))
+
+
+def scarf_on():
+    return scarf_worn
+
+
+def enemy_frame(state, index):
+    return hero_frames.get(("enemy", state, index))
