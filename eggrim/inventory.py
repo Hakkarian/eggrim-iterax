@@ -1,7 +1,7 @@
 import pyxel
 
 from eggrim import cursor
-from eggrim.assets.factory import hero_frame, tpose_frame
+from eggrim.assets.factory import hero_frame, set_scarf_worn, tpose_frame
 from eggrim.items import draw_scarf_sprite
 
 SCREEN_W = 256
@@ -47,6 +47,11 @@ def remove_item(name):
         for slot, item in list(_equipped.items()):
             if item == name:
                 del _equipped[slot]
+    _sync_scarf_worn()
+
+
+def _sync_scarf_worn():
+    set_scarf_worn(_equipped.get("fist_left") == "scarf")
 
 
 def render_backdrop():
@@ -145,6 +150,7 @@ def drop_dragged():
     sphere = sphere_at(mx, my)
     if sphere is not None and SLOT_ITEMS.get(sphere) == item and sphere not in _equipped:
         _equipped[sphere] = item
+        _sync_scarf_worn()
         return
     target = cell_at(mx, my)
     if target is not None:
@@ -152,8 +158,10 @@ def drop_dragged():
             _items.append(item)
         else:
             restore(item, source)
+        _sync_scarf_worn()
         return
     restore(item, source)
+    _sync_scarf_worn()
 
 
 def restore(item, source):

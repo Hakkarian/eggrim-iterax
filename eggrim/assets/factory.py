@@ -9,6 +9,7 @@ HERO_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_locked")
 TPOSE_DIR = os.path.join(os.path.dirname(__file__), "drawn", "readmey_tpose")
 HERO_STATES = {"idle": 4, "run": 4, "attack": 4, "defensive": 3}
 HERO_DIRECTIONS = ("right", "left", "front", "back")
+SCARF_DIRECTIONS = ("right", "front", "back")
 BANK_PX = 256
 CHARS = "0123456789abcdef"
 
@@ -38,6 +39,9 @@ USED_RECTS = {
 
 hero_frames = {}
 tpose_frames = {}
+plain_rows = {}
+scarf_rows = {}
+scarf_worn = False
 hero_palette = ()
 palette_chars = {}
 
@@ -173,6 +177,7 @@ def load_hero_asset():
         rows, _ = frame_rows(images[key])
         pyxel.images[bank].set(x, y, rows)
         hero_frames[key] = (bank, x, y, w, h)
+        plain_rows[key] = rows
     loaded = len(hero_frames)
     if loaded == 0:
         print("factory: no hero frames placed, hero stays procedural")
@@ -224,6 +229,82 @@ def load_tpose_asset():
 
 def tpose_frame(direction):
     return tpose_frames.get(direction)
+
+
+def scarf_directions(state):
+    if state in ("idle", "run", "defensive"):
+        return HERO_DIRECTIONS
+    return SCARF_DIRECTIONS
+
+
+def scarf_behind_rows(plain, twin):
+    return [
+        "".join(t if p == "0" else p for p, t in zip(prow, trow))
+        for prow, trow in zip(plain, twin)
+    ]
+
+
+def load_scarf_asset():
+    global scarf_rows
+    scarf_rows = {}
+    if not hero_frames:
+        return
+    wanted = [
+        (state, direction, index)
+        for state in HERO_STATES
+        for direction in scarf_directions(state)
+        for index in range(HERO_STATES[state])
+    ]
+    for key in wanted:
+        slot = hero_frames.get(key)
+        if slot is None:
+            continue
+        state, direction, index = key
+        path = os.path.join(HERO_DIR, f"{state}_{direction}_scarf_{index}.png")
+        if not os.path.isfile(path):
+            continue
+        img = Image.open(path).convert("RGBA")
+        if img.size != (slot[3], slot[4]):
+            print(
+                f"factory: scarf frame {state}_{direction}_{index} size"
+                f" {img.size} != slot {slot[3]}x{slot[4]}, skipped"
+            )
+            continue
+        rows, mismatches = frame_rows(img)
+        if state in ("idle", "run") and direction == "right":
+            rows = scarf_behind_rows(plain_rows[key], rows)
+        scarf_rows[key] = rows
+    for state in HERO_STATES:
+        for direction in scarf_directions(state):
+            available = [
+                index
+                for index in range(HERO_STATES[state])
+                if (state, direction, index) in scarf_rows
+            ]
+            if not available or len(available) == HERO_STATES[state]:
+                continue
+            for index in range(HERO_STATES[state]):
+                if (state, direction, index) in scarf_rows:
+                    continue
+                nearest = min(available, key=lambda i: abs(i - index))
+                scarf_rows[(state, direction, index)] = scarf_rows[
+                    (state, direction, nearest)
+                ]
+    print(
+        f"factory: scarf {len(scarf_rows)}/{len(wanted)} frames"
+        " reusable in plain slots"
+    )
+
+
+def set_scarf_worn(worn):
+    global scarf_worn
+    if worn == scarf_worn:
+        return
+    variant = scarf_rows if worn else plain_rows
+    for key, rows in variant.items():
+        bank, x, y, _, _ = hero_frames[key]
+        pyxel.images[bank].set(x, y, rows)
+    scarf_worn = worn
 
 
 def hero_frame(state, direction, index):

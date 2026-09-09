@@ -52,6 +52,7 @@ from eggrim.items import (
     draw_map_scarf,
     spawn_scarf,
 )
+from eggrim import cursor
 from eggrim import inventory
 from eggrim.player import (
     BLOCK_DRAIN,
@@ -534,6 +535,7 @@ def run():
     )
     pyxel.fullscreen(True)
     pyxel.icon(ICON_CHARS, 1, ICON_COLKEY)
+    cursor.reset()
     inventory.render_backdrop()
     render_tiles()
     render_tile_tints()
