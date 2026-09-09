@@ -1,17 +1,23 @@
+import math
+import random
+
 import pyxel
 
 SCREEN_W = 256
 SCREEN_H = 144
 FPS = 60
 MOVE_SPEED = 40.0
+DASH_SPEED = 120.0
+DASH_TOTAL_FRAMES = 24
 
 from eggrim.assets import (
     ICON_CHARS,
     ICON_COLKEY,
     PORTRAIT_BLEND_POS,
+    factory,
     load_banks,
 )
-from eggrim.assets.factory import hero_frame
+from eggrim.assets.factory import enemy_frame, hero_frame
 from eggrim.assets.floors import render_tiles
 from eggrim.assets.portraits import PORTRAIT_THUMB_POS
 from eggrim.combat import (
@@ -26,7 +32,21 @@ from eggrim.combat import (
     thrust_pillar_target,
     thrust_wall_target,
 )
-from eggrim.creatures import PILLAR_FLASH_FRAMES, spawn_pillars, spawn_walls
+from eggrim.creatures import (
+    ENEMY_ATTACK_FRAMES,
+    ENEMY_COOLDOWN_FRAMES,
+    ENEMY_DAMAGE,
+    ENEMY_HITBOX_SHRINK,
+    ENEMY_SPRITE_W,
+    PLAYER_SPRITE_W,
+    ENEMY_VIEW_FRACTION,
+    ENEMY_WALK_SPEED,
+    ENEMY_WANDER_FRAMES,
+    PILLAR_FLASH_FRAMES,
+    spawn_pillars,
+    spawn_test_enemy,
+    spawn_walls,
+)
 from eggrim.fog import (
     FOG_COLOR,
     TILE_TINT_V,
@@ -99,6 +119,7 @@ thrust = ThrustState()
 zone = None
 player_on_door = False
 scarf = None
+enemy = None
 fullscreen_on = True
 
 
@@ -118,6 +139,10 @@ def door_at(zone, feet_x, feet_y):
             if door_y * TILE <= feet_y < (door_y + 1) * TILE:
                 return index
     return None
+
+
+def left_hand_banned():
+    return factory.scarf_on() and player.view is Facing.LEFT
 
 
 def move_to_zone(target_name, door_index, feet):
@@ -147,6 +172,7 @@ portrait_from = None
 portrait_fade = 0
 PORTRAIT_FADE_FRAMES = 2
 idle_phase = 0
+dash_frames = 0
 
 
 def portrait_key(view):
@@ -158,7 +184,7 @@ def portrait_key(view):
 
 def update():
     global portrait_to, portrait_from, portrait_fade, walls, player_on_door
-    global fullscreen_on, idle_phase
+    global fullscreen_on, idle_phase, dash_frames
     idle_phase += 1
     if pyxel.btnp(pyxel.KEY_RETURN) and pyxel.btn(pyxel.KEY_ALT) or pyxel.btnp(
         pyxel.KEY_ESCAPE
@@ -174,6 +200,25 @@ def update():
         return
     if pyxel.btnp(pyxel.KEY_E):
         handle_scarf_hand()
+    if dash_frames > 0:
+        dash_frames -= 1
+        new_x = player.x - DASH_SPEED / FPS
+        if not feet_hits_wall(zone, new_x, player.y):
+            player.x = new_x
+        player.facing = (-1.0, 0.0)
+        player.side = -1.0
+        return
+    if (
+        pyxel.btnp(pyxel.KEY_SPACE)
+        and factory.scarf_on()
+        and player.view is Facing.LEFT
+        and not player.blocking
+    ):
+        dash_frames = DASH_TOTAL_FRAMES
+        player.blocking = False
+        player.sprinting = False
+        player.walk_phase = 0
+        return
     dx = (
         (pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.KEY_RIGHT))
         - (pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.KEY_LEFT))
@@ -187,7 +232,7 @@ def update():
     )
     block_held = pyxel.btn(pyxel.MOUSE_BUTTON_RIGHT)
     drained = False
-    if block_held and (
+    if block_held and not left_hand_banned() and (
         player.stamina >= BLOCK_MIN_START or (player.blocking and player.stamina > 0)
     ):
         player.blocking = True
@@ -288,6 +333,9 @@ def update():
 
     resolve_pillars(player, pillars)
 
+    if enemy is not None:
+        update_enemy(enemy)
+
     key = portrait_key(player.view)
     if key != portrait_to:
         portrait_from = portrait_to
@@ -338,6 +386,71 @@ def shoulder_point(view):
     if view is Facing.UP:
         return player.x + 1.0, player.y - 36.0
     return player.x + 1.0, player.y + 6.0
+
+
+def enemy_feet_dist(enemy):
+    return ((player.x - enemy.x) ** 2 + (player.y + PLAYER_FEET_OFFSET_Y - enemy.y) ** 2) ** 0.5
+
+
+def enemy_attack_range():
+    return (ENEMY_SPRITE_W + PLAYER_SPRITE_W) / 2 - ENEMY_HITBOX_SHRINK
+
+
+def update_enemy(enemy):
+    if enemy.cooldown > 0:
+        enemy.cooldown -= 1
+    if enemy.anim > 0:
+        enemy.anim -= 1
+        if enemy.anim == ENEMY_ATTACK_FRAMES // 2:
+            if (
+                enemy_feet_dist(enemy) <= enemy_attack_range()
+                and not player.blocking
+                and dash_frames == 0
+            ):
+                player.health = max(0.0, player.health - ENEMY_DAMAGE)
+        return
+    dist = enemy_feet_dist(enemy)
+    if dist <= enemy_attack_range():
+        if enemy.cooldown == 0:
+            enemy.anim = ENEMY_ATTACK_FRAMES
+            enemy.cooldown = ENEMY_COOLDOWN_FRAMES
+        return
+    view_radius = (zone.width_px + zone.height_px) / (2 * ENEMY_VIEW_FRACTION)
+    if dist <= view_radius:
+        enemy.heading_x = (player.x - enemy.x) / dist
+        enemy.heading_y = (player.y + PLAYER_FEET_OFFSET_Y - enemy.y) / dist
+    else:
+        enemy.wander_timer -= 1
+        if enemy.wander_timer <= 0:
+            angle = random.uniform(0.0, 2 * math.pi)
+            enemy.heading_x = math.cos(angle)
+            enemy.heading_y = math.sin(angle)
+            enemy.wander_timer = ENEMY_WANDER_FRAMES
+    if dist > 1.0:
+        new_x = enemy.x + enemy.heading_x * ENEMY_WALK_SPEED / FPS
+        new_y = enemy.y + enemy.heading_y * ENEMY_WALK_SPEED / FPS
+        if not feet_hits_wall(zone, new_x, enemy.y):
+            enemy.x = new_x
+        if not feet_hits_wall(zone, enemy.x, new_y):
+            enemy.y = new_y
+        enemy.walk_phase += 1
+
+
+def draw_test_enemy(enemy):
+    if enemy.anim > 0:
+        state = "attack"
+        index = min(3, (ENEMY_ATTACK_FRAMES - enemy.anim) * 4 // ENEMY_ATTACK_FRAMES)
+    elif enemy.walk_phase:
+        state = "run"
+        index = (enemy.walk_phase % 16) // 4
+    else:
+        state = "idle"
+        index = (idle_phase // 15) % 3
+    frame = enemy_frame(state, index)
+    if frame is None:
+        return
+    bank, u, v, w, h = frame
+    pyxel.blt(int(enemy.x) - w // 2, int(enemy.y) - h, bank, u, v, w, h, 0)
 
 
 def draw_strike(view):
@@ -416,7 +529,13 @@ def draw():
         if pillar.y <= player.y:
             draw_pillar(pillar)
     draw_map_scarf(scarf)
-    if thrust.anim > 0:
+    if enemy is not None and enemy.y <= player.y + PLAYER_FEET_OFFSET_Y:
+        draw_test_enemy(enemy)
+    if dash_frames > 0:
+        state, frame_index = "dash", min(
+            7, (DASH_TOTAL_FRAMES - 1 - dash_frames) * 8 // DASH_TOTAL_FRAMES
+        )
+    elif thrust.anim > 0:
         state, frame_index = "attack", min(
             3, int((1 - thrust.anim / THRUST_ANIM_FRAMES) * 4)
         )
@@ -493,6 +612,8 @@ def draw():
     for pillar in pillars:
         if pillar.y > player.y:
             draw_pillar(pillar)
+    if enemy is not None and enemy.y > player.y + PLAYER_FEET_OFFSET_Y:
+        draw_test_enemy(enemy)
     pyxel.camera(0, 0)
     draw_minimap(zone, player, pillars, cam_x, cam_y)
     draw_bar(
@@ -526,7 +647,7 @@ def draw():
 
 
 def run():
-    global zone, pillars, walls, scarf
+    global zone, pillars, walls, scarf, enemy
     pyxel.init(
         SCREEN_W,
         SCREEN_H,
@@ -546,4 +667,5 @@ def run():
     pillars = spawn_pillars(zone)
     walls = spawn_walls(zone)
     scarf = spawn_scarf(zone, player.x, player.y)
+    enemy = spawn_test_enemy(zone)
     pyxel.run(update, draw)

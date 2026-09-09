@@ -9,6 +9,15 @@ PILLAR_FLASH_FRAMES = 8
 PILLAR_SPRITE_U = 128
 PILLAR_SPRITE_V = 0
 PILLAR_SPRITE_SIZE = 16
+ENEMY_ATTACK_FRAMES = 24
+ENEMY_SPRITE_W = 24
+PLAYER_SPRITE_W = 26
+ENEMY_HITBOX_SHRINK = 1.0
+ENEMY_COOLDOWN_FRAMES = 60
+ENEMY_DAMAGE = 4.0
+ENEMY_WALK_SPEED = 16.0
+ENEMY_VIEW_FRACTION = 10.0
+ENEMY_WANDER_FRAMES = 120
 
 
 @dataclass
@@ -26,6 +35,33 @@ class Wall:
     tile_y: int
     hp: int = PILLAR_HP
     flash: int = 0
+
+
+@dataclass
+class TestEnemy:
+    x: float
+    y: float
+    anim: int = 0
+    cooldown: int = 0
+    walk_phase: int = 0
+    heading_x: float = 0.0
+    heading_y: float = 0.0
+    wander_timer: int = 0
+
+
+def spawn_test_enemy(zone):
+    start_x, start_y = zone.player_start
+    tile_x = int(start_x) // TILE
+    tile_y = int(start_y) // TILE
+    for steps in ((4,), range(1, 10)):
+        for step in steps:
+            tx = tile_x - step
+            if tx < 0:
+                break
+            if zone.grid[tile_y][tx] == "#":
+                continue
+            return TestEnemy(x=tx * TILE + TILE // 2, y=(tile_y + 1) * TILE)
+    return TestEnemy(x=start_x - TILE * 3, y=start_y)
 
 
 def pillar_body_box():
