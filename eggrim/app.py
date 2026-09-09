@@ -167,6 +167,7 @@ def update():
     if not fullscreen_on:
         inventory.close()
     if inventory.is_open():
+        inventory.update()
         return
     if pyxel.btnp(pyxel.KEY_E):
         handle_scarf_hand()

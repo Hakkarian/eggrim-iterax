@@ -1,5 +1,6 @@
 import pyxel
 
+from eggrim import cursor
 from eggrim.assets.factory import hero_frame, tpose_frame
 from eggrim.items import draw_scarf_sprite
 
@@ -24,6 +25,11 @@ BORDER_COLOR = 3
 _dither_map = None
 _opened = False
 _items = []
+_equipped = {}
+_drag_item = None
+_drag_from = None
+
+SLOT_ITEMS = {"fist_left": "scarf"}
 
 
 def add_item(name):
@@ -31,12 +37,16 @@ def add_item(name):
 
 
 def has_item(name):
-    return name in _items
+    return name in _items or name in _equipped.values()
 
 
 def remove_item(name):
     if name in _items:
         _items.remove(name)
+    else:
+        for slot, item in list(_equipped.items()):
+            if item == name:
+                del _equipped[slot]
 
 
 def render_backdrop():
@@ -56,15 +66,115 @@ def render_backdrop():
 def toggle():
     global _opened
     _opened = not _opened
+    cursor.reset()
 
 
 def close():
     global _opened
     _opened = False
+    cursor.reset()
 
 
 def is_open():
     return _opened
+
+
+def tpose_origin():
+    frame = tpose_frame("front")
+    if frame is None:
+        return None
+    cx = MODAL_X + HALF_W // 2
+    t = MODAL_Y + (MODAL_H - TPOSE_HEIGHT) // 2
+    return cx - frame[3] // 2, t + (TPOSE_HEIGHT - frame[4]) // 2
+
+
+def sphere_center(name):
+    origin = tpose_origin()
+    if origin is None:
+        return None
+    for sphere_name, ax, ay in TPOSE_SPHERES:
+        if sphere_name == name:
+            return origin[0] + ax, origin[1] + ay
+    return None
+
+
+def cell_at(mx, my):
+    for index in range(GRID_COLS * GRID_ROWS):
+        cell_x, cell_y = cell_top_left(index)
+        if cell_x <= mx < cell_x + CELL_SIZE and cell_y <= my < cell_y + CELL_SIZE:
+            return index
+    return None
+
+
+def sphere_at(mx, my):
+    for name, _, _ in TPOSE_SPHERES:
+        center = sphere_center(name)
+        if center is None:
+            continue
+        dx = mx - center[0]
+        dy = my - center[1]
+        if dx * dx + dy * dy <= SPHERE_RADIUS * SPHERE_RADIUS:
+            return name
+    return None
+
+
+def update():
+    global _drag_item, _drag_from
+    if _drag_item is not None and not pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
+        drop_dragged()
+        return
+    if _drag_item is None and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+        target = cell_at(pyxel.mouse_x, pyxel.mouse_y)
+        if target is not None and target < len(_items):
+            _drag_item = _items.pop(target)
+            _drag_from = target
+            return
+        sphere = sphere_at(pyxel.mouse_x, pyxel.mouse_y)
+        if sphere is not None and sphere in _equipped:
+            _drag_item = _equipped.pop(sphere)
+            _drag_from = sphere
+
+
+def drop_dragged():
+    global _drag_item, _drag_from
+    item, source = _drag_item, _drag_from
+    _drag_item = None
+    _drag_from = None
+    mx = pyxel.mouse_x
+    my = pyxel.mouse_y
+    sphere = sphere_at(mx, my)
+    if sphere is not None and SLOT_ITEMS.get(sphere) == item and sphere not in _equipped:
+        _equipped[sphere] = item
+        return
+    target = cell_at(mx, my)
+    if target is not None:
+        if target >= len(_items):
+            _items.append(item)
+        else:
+            restore(item, source)
+        return
+    restore(item, source)
+
+
+def restore(item, source):
+    if source is None:
+        _items.append(item)
+    elif isinstance(source, int):
+        _items.insert(min(source, len(_items)), item)
+    else:
+        _equipped[source] = item
+
+
+def cursor_state():
+    if _drag_item is not None:
+        return "grab"
+    target = cell_at(pyxel.mouse_x, pyxel.mouse_y)
+    if target is not None and target < len(_items):
+        return "open"
+    sphere = sphere_at(pyxel.mouse_x, pyxel.mouse_y)
+    if sphere is not None and sphere in _equipped:
+        return "open"
+    return "arrow"
 
 
 TPOSE_HEIGHT = 56
@@ -77,12 +187,46 @@ SKIN_SHADOW_COLOR = 10
 HAIR_COLOR = 12
 HAIR_HIGHLIGHT_COLOR = 13
 TRIM_COLOR = 9
+SPHERE_COLOR = 12
+SPHERE_RADIUS = 6
+TPOSE_SPHERES = (
+    ("head", 27, -6),
+    ("fist_left", -2, 19),
+    ("fist_right", 56, 19),
+    ("foot_left", 20, 55),
+    ("foot_right", 36, 55),
+)
+
+
+def draw_sphere(x, y, radius, color):
+    pyxel.circb(x, y, radius, color)
+    for yy in range(-radius + 1, radius):
+        for xx in range(-radius + 1, radius):
+            if xx * xx + yy * yy <= radius * radius and (x + xx + y + yy) % 2 == 0:
+                pyxel.pset(x + xx, y + yy, color)
 
 
 def draw_tpose_hero():
     cx = MODAL_X + HALF_W // 2
     t = MODAL_Y + (MODAL_H - TPOSE_HEIGHT) // 2
-    frame = tpose_frame("front") or hero_frame("idle", "front", 0)
+    frame = tpose_frame("front")
+    if frame is not None:
+        bank, u, v, w, h = frame
+        ox = cx - w // 2
+        oy = t + (TPOSE_HEIGHT - h) // 2
+        pyxel.blt(ox, oy, bank, u, v, w, h, 0)
+        hover = sphere_at(pyxel.mouse_x, pyxel.mouse_y) if _drag_item else None
+        for name, ax, ay in TPOSE_SPHERES:
+            sx = ox + ax
+            sy = oy + ay
+            if name == hover and SLOT_ITEMS.get(name) == _drag_item:
+                draw_sphere(sx, sy, SPHERE_RADIUS, HAIR_HIGHLIGHT_COLOR)
+            else:
+                draw_sphere(sx, sy, SPHERE_RADIUS, SPHERE_COLOR)
+            if name in _equipped:
+                draw_scarf_sprite(sx, sy)
+        return
+    frame = hero_frame("idle", "front", 0)
     if frame is not None:
         bank, u, v, w, h = frame
         pyxel.blt(cx - w // 2, t + (TPOSE_HEIGHT - h) // 2, bank, u, v, w, h, 0)
@@ -182,3 +326,7 @@ def draw():
     )
     draw_tpose_hero()
     draw_grid()
+    if _drag_item is not None:
+        draw_scarf_sprite(pyxel.mouse_x, pyxel.mouse_y)
+    cursor.show(cursor_state())
+    cursor.draw()
