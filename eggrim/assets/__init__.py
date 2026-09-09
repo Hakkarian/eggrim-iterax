@@ -1,5 +1,11 @@
 import pyxel
 
+from eggrim.assets.factory import (
+    load_hero_asset,
+    load_scarf_asset,
+    load_tpose_asset,
+    read_palette,
+)
 from eggrim.assets.floors import render_tiles
 from eggrim.assets.icon import ICON_CHARS, ICON_COLKEY
 from eggrim.assets.pillar import (
@@ -31,14 +37,13 @@ from eggrim.assets.player_sprites import (
 from eggrim.assets.portraits import (
     PORTRAIT_BLEND_POS,
     PORTRAIT_THUMB_POS,
-    paint_portraits,
     render_portrait_blends,
     render_thumbs,
 )
 
 
 def load_banks():
-    grids = paint_portraits()
+    palette_ready = read_palette()
     pyxel.images[0].set(0, 0, SPRITE_CHARS)
     pyxel.images[0].set(16, 0, FRONT_CHARS)
     pyxel.images[0].set(0, 16, BACK_CHARS)
@@ -59,5 +64,9 @@ def load_banks():
     pyxel.images[0].set(160, 32, FRONT_FADE_CHARS)
     pyxel.images[0].set(176, 32, BACK_FADE_CHARS)
     render_pillar_flash()
-    render_thumbs(grids)
-    render_portrait_blends(grids)
+    render_thumbs()
+    render_portrait_blends()
+    if palette_ready:
+        load_hero_asset()
+        load_scarf_asset()
+        load_tpose_asset()

@@ -24,6 +24,7 @@ class ThrustState:
     anim: int = 0
     facing: tuple = (1.0, 0.0)
     max_reach: float = THRUST_REACH
+    hit: bool = False
 
 
 def ray_contact(player, reach_from_center, touching):

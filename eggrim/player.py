@@ -27,6 +27,7 @@ class Player:
     stamina: float = STAT_MAX
     sprinting: bool = False
     blocking: bool = False
+    block_anim: int = 0
     walk_phase: int = 0
 
     @property
