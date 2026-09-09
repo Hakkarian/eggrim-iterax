@@ -146,6 +146,7 @@ portrait_to = "side"
 portrait_from = None
 portrait_fade = 0
 PORTRAIT_FADE_FRAMES = 2
+idle_phase = 0
 
 
 def portrait_key(view):
@@ -157,7 +158,8 @@ def portrait_key(view):
 
 def update():
     global portrait_to, portrait_from, portrait_fade, walls, player_on_door
-    global fullscreen_on
+    global fullscreen_on, idle_phase
+    idle_phase += 1
     if pyxel.btnp(pyxel.KEY_RETURN) and pyxel.btn(pyxel.KEY_ALT) or pyxel.btnp(
         pyxel.KEY_ESCAPE
     ):
@@ -425,7 +427,7 @@ def draw():
     elif player.walk_phase:
         state, frame_index = "run", (player.walk_phase % 16) // 4
     else:
-        state, frame_index = "idle", 0
+        state, frame_index = "idle", (idle_phase // 15) % 4
     attacking = thrust.anim > 0
     bob = 1 if not attacking and player.sprinting and state == "run" and frame_index == 1 else 0
     if view is Facing.UP:
