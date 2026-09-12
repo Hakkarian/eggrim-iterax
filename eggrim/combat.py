@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from eggrim.world import circle_touches_rect, circle_wall_tile
-from eggrim.zones import TILE
 
 THRUST_COOLDOWN_FRAMES = 15
 THRUST_DAMAGE = 1

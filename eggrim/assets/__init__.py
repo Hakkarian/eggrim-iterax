@@ -6,7 +6,6 @@ from eggrim.assets.factory import (
     load_tpose_asset,
     read_palette,
 )
-from eggrim.assets.floors import render_tiles
 from eggrim.assets.icon import ICON_CHARS, ICON_COLKEY
 from eggrim.assets.pillar import (
     PILLAR_CHARS,
@@ -14,7 +13,6 @@ from eggrim.assets.pillar import (
 )
 from eggrim.assets.portraits import (
     PORTRAIT_BLEND_POS,
-    PORTRAIT_THUMB_POS,
     render_portrait_blends,
     render_thumbs,
 )

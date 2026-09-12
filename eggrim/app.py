@@ -22,7 +22,6 @@ from eggrim.assets.floors import render_tiles
 from eggrim.assets.portraits import PORTRAIT_THUMB_POS
 from eggrim.combat import (
     THRUST_ANIM_FRAMES,
-    THRUST_FIST_RADIUS,
     THRUST_COOLDOWN_FRAMES,
     THRUST_DAMAGE,
     THRUST_KNOCKBACK,
