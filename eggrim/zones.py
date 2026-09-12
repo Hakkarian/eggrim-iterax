@@ -1,23 +1,8 @@
 from pathlib import Path
 
-import pyxel
-
 TILE = 8
 
-TILE_FLOOR_A = "0010"
-TILE_FLOOR_B = "0110"
-TILE_WALL = "0210"
-LEGEND = {
-    ".": TILE_FLOOR_A,
-    ",": TILE_FLOOR_B,
-    "#": TILE_WALL,
-    "P": TILE_FLOOR_A,
-    "@": TILE_FLOOR_A,
-    "D": TILE_FLOOR_A,
-}
-
 ENTITY_MARKERS = {"P": "pillar", "@": "player_start", "D": "door"}
-CHUNK_TILES = 32
 TILE_TYPE_INDEX = {".": 0, ",": 1, "#": 2, "P": 0, "@": 0, "D": 0}
 
 ZONE_LINKS = {
@@ -27,9 +12,8 @@ ZONE_LINKS = {
 
 
 class Zone:
-    def __init__(self, name, chunks, width_tiles, height_tiles, markers, grid):
+    def __init__(self, name, width_tiles, height_tiles, markers, grid):
         self.name = name
-        self.chunks = chunks
         self.width_tiles = width_tiles
         self.height_tiles = height_tiles
         self.width_px = width_tiles * TILE
@@ -62,19 +46,6 @@ def load_zone(name):
         for x, ch in enumerate(row):
             if ch in ENTITY_MARKERS:
                 markers[ENTITY_MARKERS[ch]].append((x, y))
-    chunks = []
-    for chunk_y in range(0, len(rows), CHUNK_TILES):
-        for chunk_x in range(0, width, CHUNK_TILES):
-            chunk_rows = [
-                row[chunk_x : chunk_x + CHUNK_TILES]
-                for row in rows[chunk_y : chunk_y + CHUNK_TILES]
-            ]
-            chunk_data = [
-                " ".join(LEGEND[ch] for ch in row) for row in chunk_rows
-            ]
-            tilemap = pyxel.Tilemap(len(chunk_rows[0]), len(chunk_rows), 0)
-            tilemap.set(0, 0, chunk_data)
-            chunks.append((chunk_x, chunk_y, tilemap))
-    zone = Zone(name, chunks, width, len(rows), markers, rows)
+    zone = Zone(name, width, len(rows), markers, rows)
     _zones_cache[name] = zone
     return zone

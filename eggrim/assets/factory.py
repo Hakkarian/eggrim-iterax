@@ -37,14 +37,11 @@ USED_RECTS = {
     ),
 }
 
-LEGACY_RECTS = {0: ((0, 0, 192, 64), (0, 64, 192, 64))}
-
 hero_frames = {}
 tpose_frames = {}
 plain_rows = {}
 scarf_rows = {}
 scarf_worn = False
-legacy_fallback_live = True
 hero_palette = ()
 palette_chars = {}
 
@@ -76,14 +73,11 @@ def reserve_rect(mask, x, y, w, h):
         mask[py] &= ~(win << x)
 
 
-def free_mask(bank, keep_legacy=True):
+def free_mask(bank):
     full = (1 << BANK_PX) - 1
     mask = [full] * BANK_PX
     for x, y, w, h in USED_RECTS[bank]:
         reserve_rect(mask, x, y, w, h)
-    if keep_legacy:
-        for x, y, w, h in LEGACY_RECTS.get(bank, ()):
-            reserve_rect(mask, x, y, w, h)
     return mask
 
 
@@ -127,11 +121,11 @@ def frame_rows(img):
 
 
 def load_hero_asset():
-    global hero_frames, legacy_fallback_live
+    global hero_frames
     if not palette_chars:
         print("factory: palette not installed, hero stays procedural")
         return
-    masks = {bank: free_mask(bank, keep_legacy=False) for bank in (0, 1, 2)}
+    masks = {bank: free_mask(bank) for bank in (0, 1, 2)}
     free_px = sum(
         bin(row).count("1") for mask in masks.values() for row in mask
     )
@@ -170,10 +164,10 @@ def load_hero_asset():
         random.Random(seed).sample(area_order, len(area_order)) for seed in range(8)
     ]
 
-    def pack(keep_legacy):
+    def pack():
         for order in orders:
             masks = {
-                bank: free_mask(bank, keep_legacy=keep_legacy)
+                bank: free_mask(bank)
                 for bank in (0, 1, 2)
             }
             placed = {}
@@ -196,16 +190,7 @@ def load_hero_asset():
                 break
         return placed, total_mismatches, unplaced
 
-    placed, total_mismatches, unplaced = pack(True)
-    released_legacy = False
-    if unplaced and not missing:
-        candidate = pack(False)
-        if not candidate[2]:
-            placed, total_mismatches, unplaced = candidate
-            released_legacy = True
-    legacy_fallback_live = not released_legacy
-    if released_legacy:
-        print("factory: legacy hero sprites released for drawn frames")
+    placed, total_mismatches, unplaced = pack()
     for key, (bank, x, y, w, h) in placed.items():
         rows, _ = frame_rows(images[key])
         pyxel.images[bank].set(x, y, rows)
@@ -239,7 +224,7 @@ def load_tpose_asset():
     img = Image.open(path).convert("RGBA")
     w, h = img.size
     masks = {
-        bank: free_mask(bank, keep_legacy=legacy_fallback_live)
+        bank: free_mask(bank)
         for bank in (0, 1, 2)
     }
     for bank, x, y, fw, fh in hero_frames.values():
