@@ -563,43 +563,6 @@ def draw():
             h,
             0,
         )
-    elif view in (Facing.LEFT, Facing.RIGHT):
-        walk_frame = (0, 1, 2, 1)[player.walk_phase % 20 // 5]
-        if attacking:
-            if thrust.anim == THRUST_ANIM_FRAMES or thrust.anim == 1:
-                pose = 3
-            elif thrust.anim == THRUST_ANIM_FRAMES - 1 or thrust.anim == 2:
-                pose = 4
-            else:
-                pose = 5
-        else:
-            pose = walk_frame
-        frames = ((0, 0), (48, 32), (0, 32), (96, 32), (144, 32), (0, 48))
-        sprite_u, sprite_v = frames[pose]
-        sprite_w = -16 if view is Facing.LEFT else 16
-        pyxel.blt(
-            int(player.x) - 8,
-            int(player.y) - 8 - bob,
-            0,
-            sprite_u,
-            sprite_v,
-            sprite_w,
-            16,
-            0,
-        )
-    else:
-        front = direction == "front"
-        sprite_u, sprite_v = (16, 0) if front else (0, 16)
-        pyxel.blt(
-            int(player.x) - 8,
-            int(player.y) - 8 - bob,
-            0,
-            sprite_u,
-            sprite_v,
-            16,
-            16,
-            0,
-        )
     if attacking:
         draw_strike(view)
     for pillar in pillars:
