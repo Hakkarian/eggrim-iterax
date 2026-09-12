@@ -1,0 +1,38 @@
+{
+  "orb": {
+    "file": "orb.png",
+    "w": 48,
+    "h": 45,
+    "anchor": [
+      24,
+      23
+    ]
+  },
+  "hook_hp": {
+    "file": "hook_hp.png",
+    "w": 34,
+    "h": 61,
+    "anchor": [
+      46,
+      30
+    ]
+  },
+  "hook_sp": {
+    "file": "hook_sp.png",
+    "w": 36,
+    "h": 61,
+    "anchor": [
+      -10,
+      30
+    ]
+  },
+  "block_blob": {
+    "file": "block_blob.png",
+    "w": 14,
+    "h": 13,
+    "anchor": [
+      25,
+      2
+    ]
+  }
+}

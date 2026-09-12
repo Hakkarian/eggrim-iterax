@@ -57,15 +57,8 @@ from eggrim.fog import (
     render_tile_tints,
 )
 from eggrim.hud import (
-    HEALTH_BAR_Y,
-    HEALTH_COLOR,
-    HUD_BAR_H,
-    HUD_BAR_W,
-    HUD_BAR_X,
-    STAMINA_BAR_Y,
-    STAMINA_COLOR,
-    draw_bar,
     draw_minimap,
+    draw_orb_hud,
 )
 from eggrim.items import (
     SCARF_PICKUP_RADIUS,
@@ -616,24 +609,6 @@ def draw():
         draw_test_enemy(enemy)
     pyxel.camera(0, 0)
     draw_minimap(zone, player, pillars, cam_x, cam_y)
-    draw_bar(
-        HUD_BAR_X,
-        HEALTH_BAR_Y,
-        HUD_BAR_W,
-        HUD_BAR_H,
-        HEALTH_COLOR,
-        player.health,
-        STAT_MAX,
-    )
-    draw_bar(
-        HUD_BAR_X,
-        STAMINA_BAR_Y,
-        HUD_BAR_W,
-        HUD_BAR_H,
-        STAMINA_COLOR,
-        player.stamina,
-        STAT_MAX,
-    )
     if portrait_fade > 0 and portrait_from is not None:
         step = PORTRAIT_FADE_FRAMES - portrait_fade + 1
         bank, u, v = PORTRAIT_BLEND_POS[(portrait_from, portrait_to, step)]
@@ -642,6 +617,7 @@ def draw():
         thumb_u, thumb_v = PORTRAIT_THUMB_POS[portrait_key(view)]
         portrait_w = -64 if view is Facing.LEFT else 64
         pyxel.blt(0, 0, 0, thumb_u, thumb_v, portrait_w, 64, 15)
+    draw_orb_hud(player.blocking, player.health / STAT_MAX, player.stamina / STAT_MAX)
     if inventory.is_open():
         inventory.draw()
 
