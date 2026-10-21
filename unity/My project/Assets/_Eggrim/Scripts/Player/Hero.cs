@@ -1,14 +1,22 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class Hero : MonoBehaviour
 {
     [SerializeField] float moveSpeed = 30f;
 
-    void Update()
+    Rigidbody2D body;
+
+    void Awake()
     {
-        Vector2 direction = ReadDirection();
-        transform.position += (Vector3)(direction * moveSpeed * Time.deltaTime);
+        body = GetComponent<Rigidbody2D>();
+        body.gravityScale = 0f;
+    }
+
+    void FixedUpdate()
+    {
+        body.linearVelocity = ReadDirection() * moveSpeed;
     }
 
     Vector2 ReadDirection()

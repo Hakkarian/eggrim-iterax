@@ -16,7 +16,7 @@ public class Game : MonoBehaviour
         Time.fixedDeltaTime = 1f / GameClock.TargetFps;
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
         GameClock.Tick();
     }
