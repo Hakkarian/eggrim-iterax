@@ -14,9 +14,9 @@ public class SpriteImportPreset
             }
         }
     }
-    private static void Apply(string folder)
+    public static void Apply(string path)
     {
-        TextureImporter importer = AssetImporter.GetAtPath(folder) as TextureImporter;
+        TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer == null)
         {
             return;
