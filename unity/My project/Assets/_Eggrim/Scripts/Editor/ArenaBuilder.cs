@@ -25,6 +25,16 @@ public class ArenaBuilder
         sprite.sortingOrder = -1;
         Undo.RegisterCreatedObjectUndo(arena, "Build Arena");
         Selection.activeGameObject = arena;
+        AimCamera();
+    }
+
+    static void AimCamera()
+    {
+        Camera camera = Camera.main;
+        Undo.RecordObject(camera, "Build Arena");
+        Undo.RecordObject(camera.transform, "Build Arena");
+        camera.orthographic = true;
+        camera.orthographicSize = 600f;
     }
 
     static string SaveChecker()

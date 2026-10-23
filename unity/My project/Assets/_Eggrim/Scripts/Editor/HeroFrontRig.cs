@@ -35,32 +35,22 @@ public class HeroFrontRig
 
         GameObject hero = new GameObject("Hero");
         hero.AddComponent<Hero>();
+        GameObject front = new GameObject("Front");
+        front.transform.SetParent(hero.transform);
+
 
         int drawOrder = 0;
         foreach (Part part in PartsBackToFront)
         {
-            AddPartSprite(hero, part, drawOrder);
+            SpritesHelper.AddPartSprite(front, part.Name, $"{Folder}/readmey_front_{part.Name}.png", part.OnCanvas, drawOrder);
             drawOrder += 1;
         }
 
+        SerializedObject heroState = new SerializedObject(hero.GetComponent<Hero>());
+        heroState.FindProperty("facingFront").objectReferenceValue = front;
+        heroState.ApplyModifiedProperties();
+
         Undo.RegisterCreatedObjectUndo(hero, "Build Front Rig");
         Selection.activeGameObject = hero;
-    }
-
-    static void AddPartSprite(GameObject hero, Part part, int drawOrder)
-    {
-        GameObject partSprite = new GameObject(part.Name);
-        partSprite.transform.SetParent(hero.transform);
-        partSprite.transform.localPosition = CenterAboveGround(part.OnCanvas);
-        SpriteRenderer sprite = partSprite.AddComponent<SpriteRenderer>();
-        sprite.sprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{Folder}/readmey_front_{part.Name}.png");
-        sprite.sortingOrder = drawOrder;
-    }
-
-    static Vector3 CenterAboveGround(Rect part)
-    {
-        float sideways = part.center.x - CanvasBottomMiddle.x;
-        float up = CanvasBottomMiddle.y - part.center.y;
-        return new Vector3(sideways, up, 0f);
     }
 }

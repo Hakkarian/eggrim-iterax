@@ -34,10 +34,13 @@ public class HeroRightRig
 
         GameObject hero = new GameObject("HeroRight");
 
+        GameObject right = new GameObject("Right");
+        right.transform.SetParent(hero.transform);
+
         int drawOrder = 0;
         foreach (Part part in PartsBackToFront)
         {
-            AddPartSprite(hero, part, drawOrder);
+            AddPartSprite(right, part, drawOrder);
             drawOrder += 1;
         }
 
