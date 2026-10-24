@@ -8,7 +8,7 @@ public static class SpritesHelper
         return new Vector2(canvasWidth / 2f, canvasHeight);
     }
 
-    public static void AddPartSprite(GameObject parent, string partName, string pngPath, Rect onCanvas, Vector2 anchor, int drawOrder, bool flipX)
+    public static GameObject AddPartSprite(GameObject parent, string partName, string pngPath, Rect onCanvas, Vector2 anchor, int drawOrder, bool flipX)
     {
         GameObject partSprite = new GameObject(partName);
         partSprite.transform.SetParent(parent.transform);
@@ -17,6 +17,7 @@ public static class SpritesHelper
         spriteComponent.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(pngPath);
         spriteComponent.flipX = flipX;
         spriteComponent.sortingOrder = drawOrder;
+        return partSprite;
     }
 
     static Vector3 GetPartPosition(Rect part, Vector2 anchor, bool flipX)

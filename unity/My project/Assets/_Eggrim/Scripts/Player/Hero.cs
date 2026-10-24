@@ -8,6 +8,10 @@ public class Hero : MonoBehaviour
     [SerializeField] GameObject facingBack;
     [SerializeField] GameObject facingLeft;
     [SerializeField] GameObject facingRight;
+    [SerializeField] HeroWalk frontWalk;
+    [SerializeField] HeroWalk backWalk;
+    [SerializeField] HeroWalk leftWalk;
+    [SerializeField] HeroWalk rightWalk;
     [SerializeField] float moveSpeed = 30f;
 
     Rigidbody2D body;
@@ -24,6 +28,10 @@ public class Hero : MonoBehaviour
         Vector2 direction = ReadDirection();
         body.linearVelocity = direction * moveSpeed;
         FaceMovement(direction);
+        frontWalk.Step(direction);
+        backWalk.Step(direction);
+        leftWalk.Step(direction);
+        rightWalk.Step(direction);
     }
 
     void FaceMovement(Vector2 direction)

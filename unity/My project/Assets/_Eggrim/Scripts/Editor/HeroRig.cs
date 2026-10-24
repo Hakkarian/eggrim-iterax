@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
@@ -18,6 +19,8 @@ public class HeroRig
         public string Folder;
         public string Prefix;
         public string HeroField;
+        public string WalkField;
+        public string[] WalkFrames;
         public float CanvasWidth;
         public bool FlipX;
         public Part[] Parts;
@@ -54,10 +57,10 @@ public class HeroRig
 
     static readonly Facing[] Facings =
     {
-        new Facing { ChildName = "Front", Folder = $"{ArtFolder}/Front", Prefix = "readmey_front_", HeroField = "facingFront", CanvasWidth = 24f, FlipX = false, Parts = FrontParts },
-        new Facing { ChildName = "Back", Folder = $"{ArtFolder}/Back", Prefix = "readmey_back_", HeroField = "facingBack", CanvasWidth = 24f, FlipX = false, Parts = BackParts },
-        new Facing { ChildName = "Left", Folder = $"{ArtFolder}/Right", Prefix = "readmey_right_", HeroField = "facingLeft", CanvasWidth = 26f, FlipX = true, Parts = SideParts },
-        new Facing { ChildName = "Right", Folder = $"{ArtFolder}/Right", Prefix = "readmey_right_", HeroField = "facingRight", CanvasWidth = 26f, FlipX = false, Parts = SideParts },
+        new Facing { ChildName = "Front", Folder = $"{ArtFolder}/Front", Prefix = "readmey_front_", HeroField = "facingFront", CanvasWidth = 24f, FlipX = false, Parts = FrontParts, WalkField = "frontWalk", WalkFrames = new[] { "run_front_0.png", "run_front_1.png", "run_front_2.png", "run_front_3.png" } },
+        new Facing { ChildName = "Back", Folder = $"{ArtFolder}/Back", Prefix = "readmey_back_", HeroField = "facingBack", CanvasWidth = 24f, FlipX = false, Parts = BackParts, WalkField = "backWalk", WalkFrames = new[] { "run_back_0.png", "run_back_1.png", "run_back_2.png", "run_back_3.png" } },
+        new Facing { ChildName = "Left", Folder = $"{ArtFolder}/Left", Prefix = "readmey_left_", HeroField = "facingLeft", CanvasWidth = 26f, FlipX = true, Parts = SideParts, WalkField = "leftWalk", WalkFrames = new[] { "run_left_0.png", "run_left_1.png", "run_left_2.png", "run_left_3.png" } },
+        new Facing { ChildName = "Right", Folder = $"{ArtFolder}/Right", Prefix = "readmey_right_", HeroField = "facingRight", CanvasWidth = 26f, FlipX = false, Parts = SideParts, WalkField = "rightWalk", WalkFrames = new[] { "run_right_0.png", "run_right_1.png", "run_right_2.png", "run_right_3.png" } },
     };
 
     [MenuItem("Eggrim/Build Hero")]
@@ -86,15 +89,54 @@ public class HeroRig
         rig.transform.SetParent(hero.transform);
 
         Vector2 anchor = SpritesHelper.AnchorBottomMiddle(facing.CanvasWidth, CanvasHeight);
+        List<GameObject> partObjects = new List<GameObject>();
         int drawOrder = 0;
         foreach (Part part in facing.Parts)
         {
-            SpritesHelper.AddPartSprite(rig, part.Name, $"{facing.Folder}/{facing.Prefix}{part.Name}.png", part.OnCanvas, anchor, drawOrder, facing.FlipX);
+            SpriteImportPreset.Apply($"{facing.Folder}/{facing.Prefix}{part.Name}.png");
+            partObjects.Add(SpritesHelper.AddPartSprite(rig, part.Name, $"{facing.Folder}/{facing.Prefix}{part.Name}.png", part.OnCanvas, anchor, drawOrder, facing.FlipX));
             drawOrder += 1;
         }
 
         SerializedObject heroState = new SerializedObject(hero.GetComponent<Hero>());
         heroState.FindProperty(facing.HeroField).objectReferenceValue = rig;
+        if (facing.WalkFrames != null)
+        {
+            heroState.FindProperty(facing.WalkField).objectReferenceValue = AddWalk(rig, facing, partObjects, anchor);
+        }
         heroState.ApplyModifiedProperties();
+    }
+
+    static HeroWalk AddWalk(GameObject rig, Facing facing, List<GameObject> partObjects, Vector2 anchor)
+    {
+        string folder = $"{facing.Folder}/{facing.WalkFrames[0]}";
+        GameObject run = SpritesHelper.AddPartSprite(rig, "run", folder, new Rect(0f, 0f, facing.CanvasWidth, CanvasHeight), anchor, 10, false);
+        SpriteRenderer runSprite = run.GetComponent<SpriteRenderer>();
+
+        Sprite[] frames = new Sprite[facing.WalkFrames.Length];
+        for (int i = 0; i < frames.Length; i++)
+        {
+            string framePath = $"{facing.Folder}/{facing.WalkFrames[i]}";
+            SpriteImportPreset.Apply(framePath);
+            frames[i] = AssetDatabase.LoadAssetAtPath<Sprite>(framePath);
+        }
+
+        HeroWalk walk = rig.AddComponent<HeroWalk>();
+        SerializedObject walkState = new SerializedObject(walk);
+        SerializedProperty partsProperty = walkState.FindProperty("parts");
+        partsProperty.arraySize = partObjects.Count;
+        for (int i = 0; i < partObjects.Count; i++)
+        {
+            partsProperty.GetArrayElementAtIndex(i).objectReferenceValue = partObjects[i];
+        }
+        SerializedProperty framesProperty = walkState.FindProperty("frames");
+        framesProperty.arraySize = frames.Length;
+        for (int i = 0; i < frames.Length; i++)
+        {
+            framesProperty.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+        }
+        walkState.FindProperty("run").objectReferenceValue = runSprite;
+        walkState.ApplyModifiedProperties();
+        return walk;
     }
 }
